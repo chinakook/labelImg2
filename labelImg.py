@@ -683,8 +683,9 @@ class MainWindow(QMainWindow, WindowMixin):
         if not self.canvas.editing():
             return
         item = self.currentItem()
-        text, extra_text = self.labelDialog.popUp(item.text(), item.extra_text)
-        if text is not None:
+        res = self.labelDialog.popUp(item.text(), item.extra_text)
+        if res is not None:
+            text, extra_text = res[0], res[1]
             item.setText(text) # trigger 
             item.extra_text = extra_text
             item.setBackground(generateColorByText(text))
@@ -891,8 +892,12 @@ class MainWindow(QMainWindow, WindowMixin):
                 text = self.lastLabel
                 extra_text = ''
             else:
-                text, extra_text = self.labelDialog.popUp(text=self.prevLabelText)
-                self.lastLabel = text
+                res = self.labelDialog.popUp(text=self.prevLabelText)
+                if res is not None:
+                    text, extra_text = res[0], res[1]
+                    self.lastLabel = text
+                else:
+                    text = None
         else:
             text = self.defaultLabelTextLine.text()
 

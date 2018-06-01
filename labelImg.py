@@ -44,6 +44,9 @@ from libs.yolo_io import YoloReader
 from libs.yolo_io import TXT_EXT
 from libs.ustr import ustr
 from libs.version import __version__
+import typing
+
+import bidict
 
 __appname__ = 'labelImg'
 
@@ -76,6 +79,13 @@ class WindowMixin(object):
         return toolbar
 
 
+class HashableQStandardItem(QStandardItem):
+    def __init__(self, text):
+        super(HashableQStandardItem, self).__init__(text)
+
+    def __hash__(self):
+        return hash(id(self))
+
 # PyQt5: TypeError: unhashable type: 'QListWidgetItem'
 class HashableQListWidgetItem(QListWidgetItem):
 
@@ -93,6 +103,155 @@ class HashableQListWidgetItem(QListWidgetItem):
     @extra_text.setter
     def extra_text(self, value):
         self._extra_text = value
+
+class CComboBoxDelegate(QStyledItemDelegate):
+    def __init__(self, parent):
+        super(CComboBoxDelegate, self).__init__()
+
+    def createEditor(self, parent, option, index):
+        editor = QComboBox(parent)
+        editor.addItem("man")
+        editor.addItem("woman")
+        editor.setCurrentIndex(0)
+        return editor
+
+    def setEditorData(self, editor, index):
+        text = index.model().data(index, Qt.EditRole)
+        combox = editor
+        tindex = combox.findText(text)
+        combox.setCurrentIndex(tindex)
+
+    def setModelData(self, editor, model, index):
+        comboBox = editor
+        strData = comboBox.currentText()
+        model.setData(index, strData, Qt.EditRole)
+        #print("MODEL DATA SET")
+
+    def updateEditorGeometry(self, editor, option, index):
+        editor.setGeometry(option.rect)
+
+class RowObject(object):
+    def __init__(self):
+        self.col0="column 0"
+        self.col1="column 1"
+
+class Model(QStandardItemModel):
+    def __init__(self, parent=None):
+        super(Model, self).__init__(parent)
+        self.myList = [RowObject(), RowObject()]
+        self.checkList = []
+
+    def rowCount(self, parent = ...):
+        return len(self.myList)
+
+    def columnCount(self, parent = ...):
+        return 2
+
+    def addOneRow(self, rowObject):
+        row = len(self.myList)
+        self.beginInsertRows(QModelIndex(), row, row)
+        self.myList.append(rowObject)
+        self.endInsertRows()
+
+    def data(self, index, role = ...):
+        row=index.row()
+        col=index.column()
+        if role==Qt.DisplayRole:
+            if col==0:
+                return self.myList[row].col0
+            if col==1:
+                return self.myList[row].col1
+        elif role==Qt.CheckStateRole:
+            if col==0:
+                if self.myList[row] in self.checkList:
+                    return Qt.Checked
+                else:
+                    return Qt.Unchecked
+
+    def setData(self, index, value, role = ...):
+        row=index.row()
+        col=index.column()
+        if role==Qt.CheckStateRole and col==0:
+            rowObject=self.myList[row]
+            if rowObject in self.checkList:
+                self.checkList.remove(rowObject)
+            else:
+                self.checkList.append(rowObject)
+            index=self.index(row,col+1)
+            self.dataChanged.emit(index,index)  
+        return True
+
+    def flags(self, index):
+        if index.column()==0:
+            return Qt.ItemIsEnabled | Qt.ItemIsUserCheckable
+        return Qt.ItemIsEnabled
+
+    def headerData(self, section, orientation, role = ...):
+        if role==Qt.DisplayRole:
+            if orientation==Qt.Horizontal:
+                if section==0:
+                    return "Title 1"
+                elif section==1:
+                    return "Title 2"
+
+class CHeaderView(QHeaderView):
+    clicked = pyqtSignal(int, bool)
+    _x_offset = 3
+    _y_offset = 0 # This value is calculated later, based on the height of the paint rect
+    _width = 20
+    _height = 20
+
+    def __init__(self, orientation, parent=None):
+        super(CHeaderView, self).__init__(orientation, parent)
+        self.setFixedWidth(40)
+        self.isChecked = []
+
+    def rowsInserted(self, parent, start, end):
+        #self.isChecked[start] = 1
+        self.isChecked.insert(start, 1)
+        return super().rowsInserted(parent, start, end)
+
+    def rowsAboutToBeRemoved(self, parent, start, end):
+        #print("REMOVE", start)
+        del self.isChecked[start]
+        return super().rowsAboutToBeRemoved(parent, start, end)
+
+    def paintSection(self, painter, rect, logicalIndex):
+        self._y_offset = int((rect.height()-self._width)/2.)
+        
+        option = QStyleOptionButton()
+        option.state = QStyle.State_Enabled | QStyle.State_Active
+        option.rect = QRect(rect.x() + self._x_offset, rect.y() + self._y_offset, self._width, self._height)
+        
+        #if not logicalIndex in self.isChecked:
+        #    return
+
+        if self.isChecked[logicalIndex]:
+            option.state |= QStyle.State_On
+        else:
+            option.state |= QStyle.State_Off
+
+        self.style().drawPrimitive(QStyle.PE_IndicatorCheckBox, option, painter)
+        #self.style().drawControl(QStyle.CE_CheckBox, option, painter)
+    
+    def mouseReleaseEvent(self, e):
+        index = self.logicalIndexAt(e.pos())
+        
+        if 0 <= index < self.count():
+            # vertical orientation
+            y = self.sectionViewportPosition(index)
+            if self._x_offset < e.pos().x() < self._x_offset + self._width \
+                and y + self._y_offset < e.pos().y() < y + self._y_offset + self._height:
+                if self.isChecked[index] == 1:
+                    self.isChecked[index] = 0
+                else:
+                    self.isChecked[index] = 1
+                self.clicked.emit(index, self.isChecked[index])
+                self.viewport().update()
+            else:
+                super(CHeaderView, self).mousePressEvent(e)
+        else:
+            super(CHeaderView, self).mousePressEvent(e)
 
 
 class MainWindow(QMainWindow, WindowMixin):
@@ -134,6 +293,12 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.itemsToShapes = {}
         self.shapesToItems = {}
+
+        self.ShapeItemBidict = bidict.bidict()
+
+        #self.itemsToShapes2 = {}
+        #self.shapesTo
+
         self.prevLabelText = ''
 
         listLayout = QVBoxLayout()
@@ -171,6 +336,73 @@ class MainWindow(QMainWindow, WindowMixin):
         # Connect to itemChanged to detect checkbox changes.
         self.labelList.itemChanged.connect(self.labelItemChanged)
         listLayout.addWidget(self.labelList)
+
+        
+        self.labelList2 = QTableView()
+        
+        
+        myHeader = CHeaderView(Qt.Vertical, self.labelList2)
+        self.labelList2.setVerticalHeader(myHeader)
+
+        #self.labelList2.verticalHeader().selectedIndexes()
+
+        delegate = CComboBoxDelegate(self)
+        ##self.labelList2.setColumnWidth(0, 80)
+        ##self.labelList2.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        ##self.labelList2.horizontalHeader().setSectionResizeMode(0, QHeaderView.Fixed)
+        ##self.labelList2.resizeColumnsToContents()
+        self.labelList2.setItemDelegateForColumn(0, delegate)
+
+        #model = Model()
+        #self.labelList2.setModel(model)
+        #model.addOneRow(RowObject())
+        
+        self.model = QStandardItemModel(self.labelList2)
+        self.labelList2.setModel(self.model)
+
+        self.model.setColumnCount(2)
+        
+        self.model.setHorizontalHeaderLabels(["label", "extra"])
+        self.model.dataChanged.connect(self.handleDataChange)
+        self.labelList2.setSelectionBehavior(QAbstractItemView.SelectRows)
+        
+        #self.model.hea
+
+        #for i in range(50):
+        #    #item0 = QStandardItem()
+        #    item1 = QStandardItem("man")
+        #    #item1.setFlags(item1.flags() | Qt.ItemIsUserCheckable)
+        #    #item1.setCheckState(Qt.Checked)
+        #    item2 = QStandardItem(str(i))
+        #    #model.setVerticalHeaderItem(i, myHeader)
+        #    self.model.appendRow([item1, item2])
+        #    #model.item(0,0).setText("AAA")
+        #    #i0, i1 = model.takeRow(0)
+        #    #i0.setText("AAA")
+        ##model.beginRemoveRows()
+        #self.model.removeRows(3,1)
+        
+        #self.model.removeRows(3,1)
+
+        #self.model.setData(model.index(3,1), QBrush(Qt.red), Qt.BackgroundRole)
+
+        #hlClr = QColor(Qt.red)
+        #txtClr = QColor(Qt.white)
+        #p = QPalette()
+        #p.setColor
+        #self.labelList2.setStyleSheet(
+        #        "QTreeView::item:selected{background-color: rgb(255,255,255); color: rgb(0,0,0);};"
+        #    )
+
+        #self.labelList2.setCurrentIndex(model.index(3,1))
+        #self.labelList2.selectRow(24)
+        
+        self.sm = self.labelList2.selectionModel()
+        self.sm.selectionChanged.connect(self.labelSelectionChanged2)
+        #self.labelList2.selectionChanged.connect(self.labelSelectionChanged2)
+        
+
+        listLayout.addWidget(self.labelList2)
 
         self.dock = QDockWidget(u'Box Labels', self)
         self.dock.setObjectName(u'Labels')
@@ -577,6 +809,8 @@ class MainWindow(QMainWindow, WindowMixin):
         self.itemsToShapes.clear()
         self.shapesToItems.clear()
         self.labelList.clear()
+        self.model.clear()
+        self.ShapeItemBidict.clear()
         self.filePath = None
         self.imageData = None
         self.labelFile = None
@@ -588,6 +822,23 @@ class MainWindow(QMainWindow, WindowMixin):
         if items:
             return items[0]
         return None
+
+    def currentItem2(self):
+        index = self.sm.selectedIndexes()
+        if index:
+            return index[0].row()
+        return None
+
+    def handleDataChange(self, topLeft, bottomRight):
+        #print( "DATA CHANGED", topLeft.row(), topLeft.column())
+        shape = self.ShapeItemBidict.inv[topLeft.row()]
+        if topLeft.column() == 0:
+            shape.label = self.model.data(topLeft)
+        else:
+            shape.extra_label = self.model.data(topLeft)
+        print(self.model.data(topLeft))
+        
+        return
 
     def addRecentFile(self, filePath):
         if filePath in self.recentFiles:
@@ -711,14 +962,23 @@ class MainWindow(QMainWindow, WindowMixin):
         if not self.canvas.editing():
             return
 
-        item = self.currentItem()
-        if not item: # If not selected Item, take the first one
-            item = self.labelList.item(self.labelList.count()-1)
+        #item = self.currentItem()
+        #if not item: # If not selected Item, take the first one
+        #    item = self.labelList.item(self.labelList.count()-1)
+        
+        idx = self.currentItem2()
+        if idx is None:
+            idx = self.model.rowCount() - 1
 
         difficult = self.diffcButton.isChecked()
 
+        #try:
+        #    shape = self.itemsToShapes[item]
+        #except:
+        #    pass
+
         try:
-            shape = self.itemsToShapes[item]
+            shape = self.ShapeItemBidict.inv[idx]
         except:
             pass
         # Checked and Update
@@ -727,7 +987,8 @@ class MainWindow(QMainWindow, WindowMixin):
                 shape.difficult = difficult
                 self.setDirty()
             else:  # User probably changed item visibility
-                self.canvas.setShapeVisible(shape, item.checkState() == Qt.Checked)
+                #self.canvas.setShapeVisible(shape, item.checkState() == Qt.Checked)
+                pass
         except:
             pass
 
@@ -738,9 +999,13 @@ class MainWindow(QMainWindow, WindowMixin):
         else:
             shape = self.canvas.selectedShape
             if shape:
-                self.shapesToItems[shape].setSelected(True)
+                idx = self.ShapeItemBidict[shape]
+                self.labelList2.selectRow(idx)
+                
+                #self.shapesToItems[shape].setSelected(True)
             else:
-                self.labelList.clearSelection()
+                #self.labelList.clearSelection()
+                self.labelList2.clearSelection()
         self.actions.delete.setEnabled(selected)
         self.actions.copy.setEnabled(selected)
         self.actions.edit.setEnabled(selected)
@@ -749,13 +1014,23 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def addLabel(self, shape):
         shape.paintLabel = self.paintLabelsOption.isChecked()
-        item = HashableQListWidgetItem(shape.label, shape.extra_label)
-        item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
-        item.setCheckState(Qt.Checked)
-        item.setBackground(generateColorByText(shape.label))
-        self.itemsToShapes[item] = shape
-        self.shapesToItems[shape] = item
-        self.labelList.addItem(item)
+        #item = HashableQListWidgetItem(shape.label, shape.extra_label)
+        #item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+        #item.setCheckState(Qt.Checked)
+        #item.setBackground(generateColorByText(shape.label))
+        #self.itemsToShapes[item] = shape
+        #self.shapesToItems[shape] = item
+        #self.labelList.addItem(item)
+        
+        #print(id(shape))
+        item0 = HashableQStandardItem(shape.label)
+        item1 = QStandardItem(shape.extra_label)
+        item0.setBackground(generateColorByText(shape.label))
+        item1.setBackground(generateColorByText(shape.label))
+        self.model.appendRow([item0, item1])
+
+        self.ShapeItemBidict[shape] = self.model.rowCount() - 1
+        
         for action in self.actions.onShapesPresent:
             action.setEnabled(True)
 
@@ -763,10 +1038,14 @@ class MainWindow(QMainWindow, WindowMixin):
         if shape is None:
             # print('rm empty label')
             return
-        item = self.shapesToItems[shape]
-        self.labelList.takeItem(self.labelList.row(item))
-        del self.shapesToItems[shape]
-        del self.itemsToShapes[item]
+        #item = self.shapesToItems[shape]
+        #self.labelList.takeItem(self.labelList.row(item))
+        #del self.shapesToItems[shape]
+        #del self.itemsToShapes[item]
+
+        rowid = self.ShapeItemBidict[shape]
+        self.model.removeRows(rowid, 1)
+        del self.ShapeItemBidict[shape]
 
     def loadLabels(self, shapes):
         s = []
@@ -865,6 +1144,15 @@ class MainWindow(QMainWindow, WindowMixin):
             shape = self.itemsToShapes[item]
             # Add Chris
             self.diffcButton.setChecked(shape.difficult)
+
+    def labelSelectionChanged2(self, selected, deselected):
+        idx = self.currentItem2()
+        if idx is not None and self.canvas.editing():
+            self._noSelectionSlot =True
+            shape = self.ShapeItemBidict.inv[idx]
+            self.canvas.selectShape(shape)
+            self.diffcButton.setChecked(shape.difficult)
+
 
     def labelItemChanged(self, item):
         shape = self.itemsToShapes[item]
@@ -1089,9 +1377,12 @@ class MainWindow(QMainWindow, WindowMixin):
             self.setWindowTitle(__appname__ + ' ' + filePath)
 
             # Default : select last item if there is at least one item
-            if self.labelList.count():
-                self.labelList.setCurrentItem(self.labelList.item(self.labelList.count()-1))
-                self.labelList.item(self.labelList.count()-1).setSelected(True)
+            #if self.labelList.count():
+            #    self.labelList.setCurrentItem(self.labelList.item(self.labelList.count()-1))
+            #    self.labelList.item(self.labelList.count()-1).setSelected(True)
+            
+            if self.model.rowCount():
+                self.labelList2.selectRow(self.model.rowCount() - 1)
 
             self.canvas.setFocus(True)
             return True

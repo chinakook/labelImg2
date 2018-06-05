@@ -1,3 +1,4 @@
+import sys
 try:
     from PyQt5.QtGui import *
     from PyQt5.QtCore import *
@@ -94,7 +95,11 @@ class LabelDialog(QDialog):
         indexes = self.listWidget.selectedIndexes()
 
         sl = self.model.stringList()
-        j = sl.index(self.default_label)
+        if sys.version_info < (3, 0, 0):
+            j = sl.indexOf(self.default_label)
+        else:
+            j = sl.index(self.default_label)
+            
         self.model.setData(self.model.index(j), QBrush(Qt.transparent), Qt.BackgroundRole)
 
         self.default_label = self.model.data(indexes[0], Qt.EditRole)

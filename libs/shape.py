@@ -10,6 +10,7 @@ except ImportError:
     from PyQt4.QtCore import *
 
 from libs.lib import distance
+from libs.ustr import ustr
 import sys
 import math
 
@@ -145,8 +146,11 @@ class Shape(object):
                     font.setPointSize(8)
                     font.setBold(True)
                     painter.setFont(font)
+                    if sys.version_info < (3, 0, 0) and isinstance(self.label, QVariant):
+                        self.label = ustr(self.label.toPyObject())
                     if(self.label == None):
                         self.label = ""
+                    
                     painter.drawText(min_x, min_y, self.label)
 
             if self.fill:

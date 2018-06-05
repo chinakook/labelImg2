@@ -105,9 +105,10 @@ class CComboBoxDelegate(QStyledItemDelegate):
 
     def setEditorData(self, editor, index):
         text = index.model().data(index, Qt.EditRole)
+        if sys.version_info < (3, 0, 0):
+            text = text.toPyObject()
         combox = editor
-
-        tindex = combox.findText(text)
+        tindex = combox.findText(ustr(text))
         combox.setCurrentIndex(tindex)
 
     def setModelData(self, editor, model, index):
@@ -132,11 +133,11 @@ class CHeaderView(QHeaderView):
 
     def rowsInserted(self, parent, start, end):
         self.isChecked.insert(start, 1)
-        return super().rowsInserted(parent, start, end)
+        return super(CHeaderView, self).rowsInserted(parent, start, end)
 
     def rowsAboutToBeRemoved(self, parent, start, end):
         del self.isChecked[start]
-        return super().rowsAboutToBeRemoved(parent, start, end)
+        return super(CHeaderView, self).rowsAboutToBeRemoved(parent, start, end)
 
     def paintSection(self, painter, rect, logicalIndex):
         self._y_offset = int((rect.height()-self._width)/2.)

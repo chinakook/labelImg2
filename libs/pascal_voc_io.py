@@ -120,7 +120,11 @@ class PascalVocWriter:
             ymax = SubElement(bndbox, 'ymax')
             ymax.text = str(each_object['ymax'])
             extra = SubElement(object_item, 'extra')
-            extra.text = str(each_object['extra'])
+            try:
+                extra.text = unicode(each_object['extra'])
+            except NameError:
+                # Py3: NameError: extra 'unicode' is not defined
+                extra.text = each_object['extra']
 
         for each_object in self.roboxlist:
             object_item = SubElement(top, 'object')
@@ -153,7 +157,11 @@ class PascalVocWriter:
             angle = SubElement(robndbox, 'angle')
             angle.text = str(each_object['angle'])
             extra = SubElement(object_item, 'extra')
-            extra.text = str(each_object['extra'])
+            try:
+                extra.text = unicode(each_object['extra'])
+            except NameError:
+                # Py3: NameError: extra 'unicode' is not defined
+                extra.text = each_object['extra']
 
     def save(self, targetFile=None):
         root = self.genXML()

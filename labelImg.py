@@ -1005,6 +1005,8 @@ class MainWindow(QMainWindow, WindowMixin):
             filePath = self.settings.get(SETTING_FILENAME)
 
         # Make sure that filePath is a regular python string, rather than QString
+        if sys.version_info < (3, 0, 0):
+            filePath = filePath.toPyObject()
         filePath = ustr(filePath)
 
         unicodeFilePath = ustr(filePath)
@@ -1012,7 +1014,11 @@ class MainWindow(QMainWindow, WindowMixin):
         # Highlight the file item
         if unicodeFilePath and self.mImgList.rowCount() > 0:
             sl = self.mImgList.stringList()
-            index = sl.index(unicodeFilePath)
+            if sys.version_info < (3, 0, 0):
+                index = sl.indexOf(unicodeFilePath)
+            else:
+                index = sl.index(unicodeFilePath)
+                
             self.fileListView.setCurrentIndex(self.mImgList.index(index))
 
         if unicodeFilePath and os.path.exists(unicodeFilePath):

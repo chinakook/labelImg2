@@ -88,6 +88,8 @@ class LabelDialog(QDialog):
         self.model.setData(self.model.index(j), QBrush(Qt.transparent), Qt.BackgroundRole)
 
         self.default_label = self.model.data(indexes[0], Qt.EditRole)
+        if sys.version_info < (3, 0, 0):
+            self.default_label = self.default_label.toPyObject()
         self.model.setData(self.model.index(indexes[0].row()), QBrush(Qt.red), Qt.BackgroundRole)
 
 

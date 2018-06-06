@@ -211,7 +211,7 @@ class Canvas(QWidget):
                 self.hVertex, self.hShape = None, shape
                 shape.highlightCorner = True
                 self.setToolTip(
-                    "Click & drag to move shape '%s'" % shape.label)
+                    "%s\n %f %f %f %f" % (shape.label, shape.points[0].x(), shape.points[0].y(), shape.points[2].x(), shape.points[2].y()) )
                 self.setStatusTip(self.toolTip())
                 self.overrideCursor(CURSOR_GRAB)
                 self.update()
@@ -729,10 +729,11 @@ class Canvas(QWidget):
     def keyPressEvent(self, ev):
         key = ev.key()
         if key == Qt.Key_Escape and self.current:
-            print('ESC press')
             self.current = None
             self.drawingPolygon.emit(False)
             self.update()
+        elif key == Qt.Key_Escape and self.current is None:
+            self.finalise()
         elif key == Qt.Key_Return and self.canCloseShape():
             self.finalise()
         elif key == Qt.Key_Left and self.selectedShape:

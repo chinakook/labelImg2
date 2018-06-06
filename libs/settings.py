@@ -1,3 +1,4 @@
+#import json
 import pickle
 import os
 import sys
@@ -5,9 +6,8 @@ import sys
 class Settings(object):
     def __init__(self):
         # Be default, the home will be in the same folder as labelImg
-        home = os.path.expanduser("~")
         self.data = {}
-        self.path = os.path.join(home, '.labelImgSettings.pkl')
+        self.path = './labelImg2Settings.pkl'
 
     def __setitem__(self, key, value):
         self.data[key] = value
@@ -24,6 +24,7 @@ class Settings(object):
         if self.path:
             with open(self.path, 'wb') as f:
                 pickle.dump(self.data, f, pickle.HIGHEST_PROTOCOL)
+                #json.dump(self.data, f)
                 return True
         return False
 
@@ -31,6 +32,7 @@ class Settings(object):
         if os.path.exists(self.path):
             with open(self.path, 'rb') as f:
                 self.data = pickle.load(f)
+                #self.data = json.load(f)
                 return True
         return False
 

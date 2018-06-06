@@ -8,28 +8,10 @@ except ImportError:
     from PyQt4.QtCore import *
 
 from libs.lib import newIcon, labelValidator
+from libs.cmylist import CMyListModel
 
 BB = QDialogButtonBox
 
-
-class CMyListModel(QStringListModel):
-    rowColors = {}
-    def __init__(self, parent = None):
-        super(CMyListModel, self).__init__(parent)
-
-    def data(self, index, role):
-        if role == Qt.BackgroundRole:
-            if index.row() in self.rowColors:
-                return self.rowColors[index.row()]
-
-        return super(CMyListModel, self).data(index, role)
-
-    def setData(self, index, value, role = None):
-        if role == Qt.BackgroundRole:
-            self.rowColors[index.row()] = value
-            return True
-
-        return super(CMyListModel, self).setData(index, value, role)
 
 class LabelDialog(QDialog):
 
@@ -74,7 +56,7 @@ class LabelDialog(QDialog):
             self.default_label = None
 
         self.updateListItems(listItem)
-
+        
         
         self.layout.addWidget(self.listWidget)
         self.layout.addLayout(self.horlayout)
@@ -89,10 +71,13 @@ class LabelDialog(QDialog):
             lastrow = self.model.rowCount()
             self.model.insertRows(lastrow, 1)
             self.model.setData(self.model.index(lastrow), self.edit.text(), Qt.EditRole)
+            self.listWidget.setCurrentIndex(self.model.index(lastrow))
 
 
     def defaultLabel(self):
         indexes = self.listWidget.selectedIndexes()
+        if indexes is None:
+            return
 
         sl = self.model.stringList()
         if sys.version_info < (3, 0, 0):

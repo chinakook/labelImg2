@@ -96,8 +96,13 @@ class CComboBoxDelegate(QStyledItemDelegate):
         editor = QComboBox(parent)
         for i in self.listItem:
             editor.addItem(i)
+        editor.currentIndexChanged.connect(self.editorIndexChanged)
         editor.setCurrentIndex(0)
         return editor
+
+    def editorIndexChanged(self, index):
+        combox = self.sender()
+        self.commitData.emit(combox)
 
     def setEditorData(self, editor, index):
         text = index.model().data(index, Qt.EditRole)
@@ -106,11 +111,16 @@ class CComboBoxDelegate(QStyledItemDelegate):
         combox = editor
         tindex = combox.findText(ustr(text))
         combox.setCurrentIndex(tindex)
+        #self.parent.setDirty()
+        #print(text)
 
     def setModelData(self, editor, model, index):
         comboBox = editor
         strData = comboBox.currentText()
-        model.setData(index, strData, Qt.EditRole)
+        oldstrData = index.model().data(index, Qt.EditRole)
+        if strData != oldstrData:
+            model.setData(index, strData, Qt.EditRole)
+            #print("MODEL", strData)
 
     def updateEditorGeometry(self, editor, option, index):
         editor.setGeometry(option.rect)
@@ -698,6 +708,13 @@ class MainWindow(QMainWindow, WindowMixin):
         
     # Tzutalin 20160906 : Add file list and dock to move faster
     def fileitemClicked(self, index):
+        if self.autoSaving.isChecked():
+            if self.defaultSaveDir is not None:
+                if self.dirty is True:
+                    self.saveFile()
+            else:
+                self.changeSavedirDialog()
+                return
         filename = self.mImgList.data(index, Qt.EditRole)
         if filename:
             self.loadFile(filename)
@@ -1251,6 +1268,10 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def openNextImg(self, _value=False):
         # Proceding prev image without dialog if having any label
+
+        # TODO: extra info may lost in editing
+        #self.model.
+        #self.labelList2.le
         if self.autoSaving.isChecked():
             if self.defaultSaveDir is not None:
                 if self.dirty is True:

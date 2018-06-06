@@ -72,6 +72,8 @@ class Canvas(QWidget):
         self.hideNormal = False
         self.canOutOfBounding = False
         self.showCenter = False
+        
+        #self.drawCornerEnabled = True
 
     def setDrawingColor(self, qColor):
         self.drawingLineColor = qColor
@@ -94,6 +96,12 @@ class Canvas(QWidget):
 
     def editing(self):
         return self.mode == self.EDIT
+
+    def setDrawCornerState(self, enabled):
+        for shape in reversed([s for s in self.shapes if self.isVisible(s)]):
+            shape.highlightCornerDefault=enabled
+        self.repaint()
+        self.update()
 
     def setEditing(self, value=True):
         self.mode = self.EDIT if value else self.CREATE
@@ -158,6 +166,7 @@ class Canvas(QWidget):
             if self.selectedVertex() and self.selectedShape.isRotated:
                 self.boundedRotateShape(pos)
                 self.shapeMoved.emit()
+                self.selectedShape.highlightCorner = True
                 self.repaint()
             self.status.emit("(%d,%d)." % (pos.x(), pos.y()))
             return
@@ -167,6 +176,7 @@ class Canvas(QWidget):
             if self.selectedVertex():
                 self.boundedMoveVertex(pos)
                 self.shapeMoved.emit()
+                self.selectedShape.highlightCorner = True
                 self.repaint()
             elif self.selectedShape and self.prevPoint:
                 self.overrideCursor(CURSOR_MOVE)
@@ -188,6 +198,7 @@ class Canvas(QWidget):
                 if self.selectedVertex():
                     self.hShape.highlightClear()
                 self.hVertex, self.hShape = index, shape
+                shape.highlightCorner = True
                 shape.highlightVertex(index, shape.MOVE_VERTEX)
                 self.overrideCursor(CURSOR_POINT)
                 self.setToolTip("Click & drag to move point")
@@ -198,6 +209,7 @@ class Canvas(QWidget):
                 if self.selectedVertex():
                     self.hShape.highlightClear()
                 self.hVertex, self.hShape = None, shape
+                shape.highlightCorner = True
                 self.setToolTip(
                     "Click & drag to move shape '%s'" % shape.label)
                 self.setStatusTip(self.toolTip())
@@ -207,6 +219,7 @@ class Canvas(QWidget):
         else:  # Nothing found, clear highlights, reset state.
             if self.hShape:
                 self.hShape.highlightClear()
+                #self.hShape.highlightCorner=False
                 self.update()
             self.hVertex, self.hShape = None, None
             self.overrideCursor(CURSOR_DEFAULT)
@@ -228,6 +241,8 @@ class Canvas(QWidget):
 
     def mouseReleaseEvent(self, ev):
         if ev.button() == Qt.RightButton:
+            if self.selectedVertex() and self.selectedShape.isRotated:
+                return
             menu = self.menus[bool(self.selectedShapeCopy)]
             self.restoreCursor()
             if not menu.exec_(self.mapToGlobal(ev.pos()))\
@@ -269,6 +284,7 @@ class Canvas(QWidget):
 
     def handleDrawing(self, pos):
         if self.current and self.current.reachMaxPoints() is False:
+            self.current.highlightCorner=True
             initPos = self.current[0]
             minX = initPos.x()
             minY = initPos.y()
@@ -281,6 +297,7 @@ class Canvas(QWidget):
             self.finalise()
         elif not self.outOfPixmap(pos):
             self.current = Shape()
+            self.current.highlightCorner=True
             self.current.addPoint(pos)
             self.line.points = [pos, pos]
             self.setHiding()
@@ -540,7 +557,8 @@ class Canvas(QWidget):
         p.begin(self)
         p.setRenderHint(QPainter.Antialiasing)
         p.setRenderHint(QPainter.HighQualityAntialiasing)
-        p.setRenderHint(QPainter.SmoothPixmapTransform)
+        if self.scale < 1.0:
+            p.setRenderHint(QPainter.SmoothPixmapTransform)
 
         p.scale(self.scale, self.scale)
         p.translate(self.offsetToCenter())

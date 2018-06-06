@@ -52,6 +52,9 @@ class Shape(object):
         self.center = None
         self.isRotated = True
 
+        self.highlightCorner = False
+        self.highlightCornerDefault = False
+
         self._highlightIndex = None
         self._highlightMode = self.NEAR_VERTEX
         self._highlightSettings = {
@@ -113,6 +116,7 @@ class Shape(object):
             pen = QPen(color)
             # Try using integer sizes for smoother drawing(?)
             pen.setWidth(max(1, int(round(2.0 / self.scale))))
+            #pen.setWidth(int(round(2.0/self.scale)))
             painter.setPen(pen)
 
             line_path = QPainterPath()
@@ -131,8 +135,9 @@ class Shape(object):
                 line_path.lineTo(self.points[0])
 
             painter.drawPath(line_path)
-            painter.drawPath(vrtx_path)
-            painter.fillPath(vrtx_path, self.vertex_fill_color)
+            if self.highlightCorner:
+                painter.drawPath(vrtx_path)
+                painter.fillPath(vrtx_path, self.vertex_fill_color)
 
             # Draw text at the top-left
             if self.paintLabel:
@@ -143,7 +148,7 @@ class Shape(object):
                     min_y = min(min_y, point.y())
                 if min_x != sys.maxsize and min_y != sys.maxsize:
                     font = QFont()
-                    font.setPointSize(8)
+                    font.setPointSize(28)
                     font.setBold(True)
                     painter.setFont(font)
                     if sys.version_info < (3, 0, 0) and isinstance(self.label, QVariant):
@@ -165,7 +170,9 @@ class Shape(object):
                 if self.isRotated:
                     painter.fillPath(center_path, self.vertex_fill_color)
                 else:
-                    painter.fillPath(center_path, QColor(0, 0, 0))                
+                    painter.fillPath(center_path, QColor(0, 0, 0))
+                    
+            self.highlightCorner = self.highlightCornerDefault
 
     def paintNormalCenter(self, painter):
         if self.center is not None:

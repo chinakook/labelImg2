@@ -123,7 +123,6 @@ class LabelDialog(QDialog):
             self.edit.setText(self.edit.text())
 
     def popUp(self, move=True):
-        #self.edit.setSelection(0, len(text))
         self.edit.setFocus(Qt.PopupFocusReason)
         if move:
             self.move(QCursor.pos())
@@ -131,13 +130,4 @@ class LabelDialog(QDialog):
             return self.model.stringList(), self.default_label
         else:
             None
-        #return (self.edit.text(), self.extra_edit.text()) if self.exec_() else None
 
-    #def listItemClick(self, tQListWidgetItem):
-    #    try:
-    #        text = tQListWidgetItem.text().trimmed()
-    #    except AttributeError:
-    #        # PyQt5: AttributeError: 'str' object has no attribute 'trimmed'
-    #        text = tQListWidgetItem.text().strip()
-    #    self.edit.setText(text)
-    #    self.validate()

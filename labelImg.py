@@ -212,13 +212,7 @@ class MainWindow(QMainWindow, WindowMixin):
         # Main widgets and related state.
         self.labelDialog = LabelDialog(parent=self, listItem=self.labelHist)
 
-        self.itemsToShapes = {}
-        self.shapesToItems = {}
-
         self.ShapeItemBidict = bidict.bidict()
-
-        #self.itemsToShapes2 = {}
-        #self.shapesTo
 
         self.prevLabelText = ''
 
@@ -356,7 +350,6 @@ class MainWindow(QMainWindow, WindowMixin):
 
         color1 = action('Box Line Color', self.chooseColor1,
                         'Ctrl+L', 'color_line', u'Choose Box line color')
-
         createMode = action('Create\nRectBox', self.setCreateMode,
                             'w', 'new', u'Start drawing Boxs', enabled=False)
         editMode = action('&Edit\nRectBox', self.setEditMode,
@@ -373,17 +366,6 @@ class MainWindow(QMainWindow, WindowMixin):
         copy = action('&Duplicate\nRectBox', self.copySelectedShape,
                       'Ctrl+D', 'copy', u'Create a duplicate of the selected Box',
                       enabled=False)
-
-        advancedMode = action('&Advanced Mode', self.toggleAdvancedMode,
-                              'Ctrl+Shift+A', 'expert', u'Switch to advanced mode',
-                              checkable=True)
-
-        hideAll = action('&Hide\nRectBox', partial(self.togglePolygons, False),
-                         'Ctrl+H', 'hide', u'Hide all Boxs',
-                         enabled=False)
-        showAll = action('&Show\nRectBox', partial(self.togglePolygons, True),
-                         'Ctrl+A', 'hide', u'Show all Boxs',
-                         enabled=False)
 
         help = action('&Tutorial', self.showTutorialDialog, None, 'help', u'Show demos')
         showInfo = action('&Information', self.showInfoDialog, None, 'help', u'Information')
@@ -408,6 +390,7 @@ class MainWindow(QMainWindow, WindowMixin):
         fitWidth = action('Fit &Width', self.setFitWidth,
                           'Ctrl+Shift+F', 'fit-width', u'Zoom follows window width',
                           checkable=True, enabled=False)
+
         # Group zoom controls into a list for easier toggling.
         zoomActions = (self.zoomWidget, zoomIn, zoomOut,
                        zoomOrg, fitWindow, fitWidth)
@@ -424,17 +407,6 @@ class MainWindow(QMainWindow, WindowMixin):
                       enabled=True)
         self.editButton.setDefaultAction(edit)
 
-        shapeLineColor = action('Shape &Line Color', self.chshapeLineColor,
-                                icon='color_line', tip=u'Change the line color for this specific shape',
-                                enabled=False)
-        shapeFillColor = action('Shape &Fill Color', self.chshapeFillColor,
-                                icon='color', tip=u'Change the fill color for this specific shape',
-                                enabled=False)
-
-        labels = self.dock.toggleViewAction()
-        labels.setText('Show/Hide Label Panel')
-        labels.setShortcut('Ctrl+Shift+L')
-
         # Lavel list context menu.
         labelMenu = QMenu()
         addActions(labelMenu, (edit, delete))
@@ -442,8 +414,7 @@ class MainWindow(QMainWindow, WindowMixin):
         # Store actions for further handling.
         self.actions = struct(save=save, save_format=save_format, saveAs=saveAs, open=open, close=close, resetAll = resetAll,
                               lineColor=color1, create=create, createRo=createRo, delete=delete, edit=edit, copy=copy,
-                              createMode=createMode, editMode=editMode, advancedMode=advancedMode,
-                              shapeLineColor=shapeLineColor, shapeFillColor=shapeFillColor,
+                              createMode=createMode, editMode=editMode,
                               zoom=zoom, zoomIn=zoomIn, zoomOut=zoomOut, zoomOrg=zoomOrg,
                               fitWindow=fitWindow, fitWidth=fitWidth,
                               zoomActions=zoomActions,
@@ -452,12 +423,12 @@ class MainWindow(QMainWindow, WindowMixin):
                               beginner=(), advanced=(),
                               editMenu=(edit, copy, delete,
                                         None, color1),
-                              beginnerContext=(create, edit, copy, delete),
+                              beginnerContext=(create, createRo, copy, delete),
                               advancedContext=(createMode, editMode, edit, copy,
-                                               delete, shapeLineColor, shapeFillColor),
+                                               delete),
                               onLoadActive=(
                                   close, create, createMode, editMode),
-                              onShapesPresent=(saveAs, hideAll, showAll))
+                              onShapesPresent=(saveAs,))
 
         self.menus = struct(
             file=self.menu('&File'),
@@ -471,11 +442,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.autoSaving = QAction("Auto Saving", self)
         self.autoSaving.setCheckable(True)
         self.autoSaving.setChecked(settings.get(SETTING_AUTO_SAVE, False))
-        # Sync single class mode from PR#106
-        self.singleClassMode = QAction("Single Class Mode", self)
-        self.singleClassMode.setShortcut("Ctrl+Shift+S")
-        self.singleClassMode.setCheckable(True)
-        self.singleClassMode.setChecked(settings.get(SETTING_SINGLE_CLASS, False))
+        
         self.lastLabel = None
         # Add option to enable/disable labels being painted at the top of bounding boxes
         self.paintLabelsOption = QAction("Paint Labels", self)
@@ -484,15 +451,20 @@ class MainWindow(QMainWindow, WindowMixin):
         self.paintLabelsOption.setChecked(settings.get(SETTING_PAINT_LABEL, False))
         self.paintLabelsOption.triggered.connect(self.togglePaintLabelsOption)
 
+        self.drawCorner = QAction('Always Draw Corner', self)
+        self.drawCorner.setCheckable(True)
+        self.drawCorner.setChecked(False)
+        self.drawCorner.triggered.connect(self.drawCornerChanged)
+
         addActions(self.menus.file,
                    (open, opendir, changeSavedir, openAnnotation, self.menus.recentFiles, save, save_format, saveAs, close, resetAll, quit))
         addActions(self.menus.help, (help, showInfo))
         addActions(self.menus.view, (
             self.autoSaving,
-            self.singleClassMode,
             self.paintLabelsOption,
-            labels, advancedMode, None,
-            hideAll, showAll, None,
+            self.drawCorner,
+            None,
+            None,
             zoomIn, zoomOut, zoomOrg, None,
             fitWindow, fitWidth))
 
@@ -508,11 +480,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self.actions.beginner = (
             open, opendir, changeSavedir, openNextImg, openPrevImg, verify, save, save_format, None, create, createRo, copy, delete, None,
             zoomIn, zoom, zoomOut, fitWindow, fitWidth)
-
-        self.actions.advanced = (
-            open, opendir, changeSavedir, openNextImg, openPrevImg, save, save_format, None,
-            createMode, editMode, None,
-            hideAll, showAll)
 
         self.statusBar().showMessage('%s started.' % __appname__)
         self.statusBar().show()
@@ -555,15 +522,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.setDrawingColor(self.lineColor)
         # Add chris
         Shape.difficult = self.difficult
-
-        def xbool(x):
-            if isinstance(x, QVariant):
-                return x.toBool()
-            return bool(x)
-
-        if xbool(settings.get(SETTING_ADVANCE_MODE, False)):
-            self.actions.advancedMode.setChecked(True)
-            self.toggleAdvancedMode()
 
         # Populate the File menu dynamically.
         self.updateFileMenu()
@@ -608,19 +566,7 @@ class MainWindow(QMainWindow, WindowMixin):
         elif self.usingYoloFormat: self.set_format(FORMAT_PASCALVOC)
 
     def noShapes(self):
-        return not self.itemsToShapes
-
-    def toggleAdvancedMode(self, value=True):
-        self._beginner = not value
-        self.canvas.setEditing(True)
-        self.populateModeActions()
-        self.editButton.setVisible(not value)
-        if value:
-            self.actions.createMode.setEnabled(True)
-            self.actions.editMode.setEnabled(False)
-            self.dock.setFeatures(self.dock.features() | self.dockFeatures)
-        else:
-            self.dock.setFeatures(self.dock.features() ^ self.dockFeatures)
+        return not self.ShapeItemBidict.inv
 
     def populateModeActions(self):
         if self.beginner():
@@ -668,8 +614,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self.statusBar().showMessage(message, delay)
 
     def resetState(self):
-        self.itemsToShapes.clear()
-        self.shapesToItems.clear()
         self.model.clear()
         self.model.setHorizontalHeaderLabels(["Label", "Extra Info"])
         self.ShapeItemBidict.clear()
@@ -686,7 +630,6 @@ class MainWindow(QMainWindow, WindowMixin):
         return None
 
     def handleDataChange(self, topLeft, bottomRight):
-        #print( "DATA CHANGED", topLeft.row(), topLeft.column())
         item0 = self.model.item(topLeft.row(), 0)
         shape = self.ShapeItemBidict.inv[item0]
         if topLeft.column() == 0:
@@ -847,8 +790,6 @@ class MainWindow(QMainWindow, WindowMixin):
                 self.labelList2.clearSelection()
         self.actions.delete.setEnabled(selected)
         self.actions.copy.setEnabled(selected)
-        self.actions.shapeLineColor.setEnabled(selected)
-        self.actions.shapeFillColor.setEnabled(selected)
 
     def addLabel(self, shape):
         shape.paintLabel = self.paintLabelsOption.isChecked()
@@ -912,6 +853,8 @@ class MainWindow(QMainWindow, WindowMixin):
                 shape.fill_color = QColor(*fill_color)
             else:
                 shape.fill_color = generateColorByText(label)
+            
+            shape.highlightCornerDefault = self.drawCorner.isChecked()
 
             if not label in self.labelHist:
                 self.labelHist.append(label)
@@ -990,6 +933,8 @@ class MainWindow(QMainWindow, WindowMixin):
             self.prevLabelText = text
             generate_color = generateColorByText(text)
             shape = self.canvas.setLastLabel(text, generate_color, generate_color, extra_text)
+            shape.highlightCornerDefault=self.drawCorner.isChecked()
+
             self.addLabel(shape)
             if self.beginner():  # Switch to edit mode.
                 self.canvas.setEditing(True)
@@ -1080,9 +1025,12 @@ class MainWindow(QMainWindow, WindowMixin):
         self.zoomMode = self.FIT_WIDTH if value else self.MANUAL_ZOOM
         self.adjustScale()
 
-    def togglePolygons(self, value):
-        for item, shape in self.itemsToShapes.items():
-            item.setCheckState(Qt.Checked if value else Qt.Unchecked)
+    def drawCornerChanged(self, value=True):
+        self.canvas.setDrawCornerState(value)
+
+    #def togglePolygons(self, value):
+    #    for item, shape in self.itemsToShapes.items():
+    #        item.setCheckState(Qt.Checked if value else Qt.Unchecked)
 
     def loadFile(self, filePath=None):
         """Load the specified file, or the last opened file if None."""
@@ -1167,14 +1115,9 @@ class MainWindow(QMainWindow, WindowMixin):
                     self.loadYOLOTXTByFilename(txtPath)
 
             self.setWindowTitle(__appname__ + ' ' + filePath)
-
-            # Default : select last item if there is at least one item
-            #if self.labelList.count():
-            #    self.labelList.setCurrentItem(self.labelList.item(self.labelList.count()-1))
-            #    self.labelList.item(self.labelList.count()-1).setSelected(True)
             
-            if self.model.rowCount():
-                self.labelList2.selectRow(self.model.rowCount() - 1)
+            #if self.model.rowCount():
+            #    self.labelList2.selectRow(self.model.rowCount() - 1)
 
             self.canvas.setFocus(True)
             return True
@@ -1241,7 +1184,6 @@ class MainWindow(QMainWindow, WindowMixin):
             settings[SETTING_LAST_OPEN_DIR] = ""
 
         settings[SETTING_AUTO_SAVE] = self.autoSaving.isChecked()
-        settings[SETTING_SINGLE_CLASS] = self.singleClassMode.isChecked()
         settings[SETTING_PAINT_LABEL] = self.paintLabelsOption.isChecked()
         settings.save()
     ## User Dialogs ##
@@ -1491,22 +1433,6 @@ class MainWindow(QMainWindow, WindowMixin):
         if self.noShapes():
             for action in self.actions.onShapesPresent:
                 action.setEnabled(False)
-
-    def chshapeLineColor(self):
-        color = self.colorDialog.getColor(self.lineColor, u'Choose line color',
-                                          default=DEFAULT_LINE_COLOR)
-        if color:
-            self.canvas.selectedShape.line_color = color
-            self.canvas.update()
-            self.setDirty()
-
-    def chshapeFillColor(self):
-        color = self.colorDialog.getColor(self.fillColor, u'Choose fill color',
-                                          default=DEFAULT_FILL_COLOR)
-        if color:
-            self.canvas.selectedShape.fill_color = color
-            self.canvas.update()
-            self.setDirty()
 
     def copyShape(self):
         self.canvas.endMove(copy=True)

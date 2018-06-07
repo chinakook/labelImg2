@@ -136,11 +136,11 @@ class CEditDelegate(QStyledItemDelegate):
     def setEditorData(self, editor, index):
         self.currsender = None
         self.currstr = None
-        return super().setEditorData(editor, index)
+        return super(CEditDelegate, self).setEditorData(editor, index)
 
-    def editorTextEdited(self, str):
+    def editorTextEdited(self, editorstr):
         self.currsender = self.sender()
-        self.currstr = str
+        self.currstr = editorstr
 
     def earlyCommit(self):
         if self.currsender is not None and self.currstr is not None:
@@ -625,8 +625,12 @@ class MainWindow(QMainWindow, WindowMixin):
         shape = self.ItemShapeDict[item0]
         if topLeft.column() == 0:
             shape.label = self.model.data(topLeft)
+            if sys.version_info < (3, 0, 0):
+                shape.label = shape.label.toPyObject()
         else:
             shape.extra_label = self.model.data(topLeft)
+            if sys.version_info < (3, 0, 0):
+                shape.extra_label = shape.extra_label.toPyObject()
         self.setDirty()
         
         return

@@ -144,6 +144,8 @@ class CEditDelegate(QStyledItemDelegate):
 
     def earlyCommit(self):
         if self.currsender is not None and self.currstr is not None:
+            # TODO: bug here,  should disable create rect when editing
+            print(self.currsender)
             self.commitData.emit(self.currsender)
         
 

@@ -34,6 +34,8 @@ class Canvas(QWidget):
     hideNRect = pyqtSignal(bool)
     status = pyqtSignal(str)
 
+    cancelDraw = pyqtSignal()
+
     CREATE, EDIT = list(range(2))
 
     epsilon = 11.0
@@ -189,7 +191,7 @@ class Canvas(QWidget):
         # - Highlight shapes
         # - Highlight vertex
         # Update shape/vertex fill and tooltip value accordingly.
-        self.setToolTip("Image")
+        self.setToolTip("Background")
         for shape in reversed([s for s in self.shapes if self.isVisible(s)]):
             # Look for a nearby vertex to highlight. If that fails,
             # check if we happen to be inside a shape.
@@ -202,7 +204,7 @@ class Canvas(QWidget):
                 shape.highlightVertex(index, shape.MOVE_VERTEX)
                 self.overrideCursor(CURSOR_POINT)
                 self.setToolTip("Click & drag to move point")
-                self.setStatusTip(self.toolTip())
+                #self.setStatusTip(self.toolTip())
                 self.update()
                 break
             elif shape.containsPoint(pos):
@@ -212,7 +214,7 @@ class Canvas(QWidget):
                 shape.highlightCorner = True
                 self.setToolTip(
                     "%s\n %f %f %f %f" % (shape.label, shape.points[0].x(), shape.points[0].y(), shape.points[2].x(), shape.points[2].y()) )
-                self.setStatusTip(self.toolTip())
+                #self.setStatusTip(self.toolTip())
                 self.overrideCursor(CURSOR_GRAB)
                 self.update()
                 break
@@ -625,7 +627,9 @@ class Canvas(QWidget):
         return not (0 <= p.x() <= w and 0 <= p.y() <= h)
 
     def finalise(self):
-        assert self.current
+        #assert self.current
+        if self.current is None:
+            return
         if self.current.points[0] == self.current.points[-1]:
             self.current = None
             self.drawingPolygon.emit(False)
@@ -733,6 +737,10 @@ class Canvas(QWidget):
             self.drawingPolygon.emit(False)
             self.update()
         elif key == Qt.Key_Escape and self.current is None:
+            print("ESCAPE")
+            if self.drawing():
+                #self.setEditing(True)
+                self.cancelDraw.emit()
             self.finalise()
         elif key == Qt.Key_Return and self.canCloseShape():
             self.finalise()

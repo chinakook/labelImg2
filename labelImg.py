@@ -86,7 +86,6 @@ class HashableQStandardItem(QStandardItem):
 class CComboBoxDelegate(QStyledItemDelegate):
     def __init__(self, parent, listItem):
         super(CComboBoxDelegate, self).__init__(parent)
-        self.parent = parent
         self.listItem = listItem
 
     def updateListItem(self, listItem):
@@ -100,6 +99,7 @@ class CComboBoxDelegate(QStyledItemDelegate):
         editor.setCurrentIndex(0)
         return editor
 
+    # commit data early, prevent to loss data when clicking OpenNextImg
     def editorIndexChanged(self, index):
         combox = self.sender()
         self.commitData.emit(combox)
@@ -111,8 +111,6 @@ class CComboBoxDelegate(QStyledItemDelegate):
         combox = editor
         tindex = combox.findText(ustr(text))
         combox.setCurrentIndex(tindex)
-        #self.parent.setDirty()
-        #print(text)
 
     def setModelData(self, editor, model, index):
         comboBox = editor
@@ -120,11 +118,34 @@ class CComboBoxDelegate(QStyledItemDelegate):
         oldstrData = index.model().data(index, Qt.EditRole)
         if strData != oldstrData:
             model.setData(index, strData, Qt.EditRole)
-            #print("MODEL", strData)
 
     def updateEditorGeometry(self, editor, option, index):
         editor.setGeometry(option.rect)
 
+class CEditDelegate(QStyledItemDelegate):
+    def __init__(self, parent):
+        super(CEditDelegate, self).__init__(parent)
+        self.currsender = None
+        self.currstr = None
+
+    def createEditor(self, parent, option, index):
+        editor = QLineEdit(parent)
+        editor.textEdited.connect(self.editorTextEdited)
+        return editor
+
+    def setEditorData(self, editor, index):
+        self.currsender = None
+        self.currstr = None
+        return super().setEditorData(editor, index)
+
+    def editorTextEdited(self, str):
+        self.currsender = self.sender()
+        self.currstr = str
+
+    def earlyCommit(self):
+        if self.currsender is not None and self.currstr is not None:
+            self.commitData.emit(self.currsender)
+        
 
 class CHeaderView(QHeaderView):
     clicked = pyqtSignal(int, bool)
@@ -196,8 +217,6 @@ class MainWindow(QMainWindow, WindowMixin):
 
         # Save as Pascal voc xml
         self.defaultSaveDir = defaultSaveDir
-        self.usingPascalVocFormat = True
-        #self.usingYoloFormat = False
 
         # For loading all image under a directory
         self.dirname = None
@@ -208,7 +227,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self.dirty = False
 
         self._noSelectionSlot = False
-        self._beginner = True
 
         # Load predefined classes to the list
         self.loadPredefinedClasses(defaultPrefdefClassFile)
@@ -251,7 +269,9 @@ class MainWindow(QMainWindow, WindowMixin):
         self.labelList2.setVerticalHeader(myHeader)
 
         self.label_delegate = CComboBoxDelegate(self, self.labelHist)
+        self.extra_delegate = CEditDelegate(self)
         self.labelList2.setItemDelegateForColumn(0, self.label_delegate)
+        self.labelList2.setItemDelegateForColumn(1, self.extra_delegate)
 
         self.model = QStandardItemModel(self.labelList2)
         self.model.setColumnCount(2)
@@ -309,6 +329,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.shapeMoved.connect(self.setDirty)
         self.canvas.selectionChanged.connect(self.shapeSelectionChanged)
         self.canvas.drawingPolygon.connect(self.toggleDrawingSensitive)
+        self.canvas.cancelDraw.connect(self.createCancel)
 
         self.setCentralWidget(scroll)
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock)
@@ -355,11 +376,6 @@ class MainWindow(QMainWindow, WindowMixin):
 
         resetAll = action('&ResetAll', self.resetAll, None, 'resetall', u'Reset all')
 
-        createMode = action('Create\nRectBox', self.setCreateMode,
-                            'w', 'new', u'Start drawing Boxs', enabled=False)
-        editMode = action('&Edit\nRectBox', self.setEditMode,
-                          'Ctrl+J', 'edit', u'Move and edit Boxs', enabled=False)
-
         create = action('Create\nRectBox', self.createShape,
                         'w', 'new', u'Draw a new Box', enabled=False)
 
@@ -372,7 +388,7 @@ class MainWindow(QMainWindow, WindowMixin):
                       'Ctrl+D', 'copy', u'Create a duplicate of the selected Box',
                       enabled=False)
 
-        showInfo = action('&Information', self.showInfoDialog, None, 'help', u'Information')
+        showInfo = action('&About', self.showInfoDialog, None, 'help', u'About')
 
         zoom = QWidgetAction(self)
         zoom.setDefaultWidget(self.zoomWidget)
@@ -394,7 +410,7 @@ class MainWindow(QMainWindow, WindowMixin):
         fitWidth = action('Fit &Width', self.setFitWidth,
                           'Ctrl+Shift+F', 'fit-width', u'Zoom follows window width',
                           checkable=True, enabled=False)
-
+        
         # Group zoom controls into a list for easier toggling.
         zoomActions = (self.zoomWidget, zoomIn, zoomOut,
                        zoomOrg, fitWindow, fitWidth)
@@ -406,8 +422,8 @@ class MainWindow(QMainWindow, WindowMixin):
             self.MANUAL_ZOOM: lambda: 1,
         }
 
-        edit = action('&Edit Label', self.editLabel,
-                      'Ctrl+E', 'edit', u'Modify the label of the selected Box',
+        edit = action('&Manage Labels', self.editLabel,
+                      'Ctrl+M', 'edit', u'Modify the label of the selected Box',
                       enabled=True)
         self.editButton.setDefaultAction(edit)
 
@@ -418,20 +434,17 @@ class MainWindow(QMainWindow, WindowMixin):
         # Store actions for further handling.
         self.actions = struct(save=save, saveAs=saveAs, open=open, close=close, resetAll = resetAll,
                               create=create, createRo=createRo, delete=delete, edit=edit, copy=copy,
-                              createMode=createMode, editMode=editMode,
                               zoom=zoom, zoomIn=zoomIn, zoomOut=zoomOut, zoomOrg=zoomOrg,
                               fitWindow=fitWindow, fitWidth=fitWidth,
                               zoomActions=zoomActions,
                               fileMenuActions=(
                                   open, opendir, save, saveAs, close, resetAll, quit),
-                              beginner=(), advanced=(),
+                              beginner=(),
                               editMenu=(edit, copy, delete,
                                         None),
                               beginnerContext=(create, createRo, copy, delete),
-                              advancedContext=(createMode, editMode, edit, copy,
-                                               delete),
                               onLoadActive=(
-                                  close, create, createMode, editMode),
+                                  close, create),
                               onShapesPresent=(saveAs,))
 
         self.menus = struct(
@@ -457,7 +470,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.drawCorner = QAction('Always Draw Corner', self)
         self.drawCorner.setCheckable(True)
-        self.drawCorner.setChecked(False)
+        self.drawCorner.setChecked(settings.get(SETTING_DRAW_CORNER, False))
         self.drawCorner.triggered.connect(self.drawCornerChanged)
 
         addActions(self.menus.file,
@@ -556,18 +569,14 @@ class MainWindow(QMainWindow, WindowMixin):
         return not self.ItemShapeDict
 
     def populateModeActions(self):
-        if self.beginner():
-            tool, menu = self.actions.beginner, self.actions.beginnerContext
-        else:
-            tool, menu = self.actions.advanced, self.actions.advancedContext
+        tool, menu = self.actions.beginner, self.actions.beginnerContext
         self.tools.clear()
         
         addActions(self.tools, tool)
         self.canvas.menus[0].clear()
         addActions(self.canvas.menus[0], menu)
         self.menus.edit.clear()
-        actions = (self.actions.create,) if self.beginner()\
-            else (self.actions.createMode, self.actions.editMode)
+        actions = (self.actions.create,) 
         addActions(self.menus.edit, actions + self.actions.editMenu)
 
     def setDirty(self):
@@ -629,37 +638,30 @@ class MainWindow(QMainWindow, WindowMixin):
             self.recentFiles.pop()
         self.recentFiles.insert(0, filePath)
 
-    def beginner(self):
-        return self._beginner
-
-    def advanced(self):
-        return not self.beginner()
-
     def showInfoDialog(self):
-        msg = u'Name:{0} \nApp Version:{1} \n{2} '.format(__appname__, __version__, sys.version_info)
-        QMessageBox.information(self, u'Information', msg)
+        msg = u'{0} \n©Chinakook 2018. chinakook@msn.com'.format(__appname__)
+        QMessageBox.information(self, u'About', msg)
 
     def createShape(self):
-        assert self.beginner()
         self.canvas.setEditing(False)
         self.canvas.canDrawRotatedRect = False
         self.actions.create.setEnabled(False)
         self.actions.createRo.setEnabled(False)
 
-    # create Rotated Rect
     def createRoShape(self):
-        assert self.beginner()
         self.canvas.setEditing(False)
         self.canvas.canDrawRotatedRect = True
         self.actions.create.setEnabled(False)
-        self.actions.createRo.setEnabled(False)    
+        self.actions.createRo.setEnabled(False)
+        
+    def createCancel(self):
+        self.canvas.setEditing(True)
+        self.canvas.restoreCursor()
+        self.actions.create.setEnabled(True)
+        self.actions.createRo.setEnabled(True)
 
     def toggleDrawingSensitive(self, drawing=True):
-        """In the middle of drawing, toggling between modes should be disabled."""
-        self.actions.editMode.setEnabled(not drawing)
-        if not drawing and self.beginner():
-            # Cancel creation.
-            print('Cancel creation.')
+        if not drawing:
             self.canvas.setEditing(True)
             self.canvas.restoreCursor()
             self.actions.create.setEnabled(True)
@@ -667,17 +669,6 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def toggleDrawMode(self, edit=True):
         self.canvas.setEditing(edit)
-        self.actions.createMode.setEnabled(edit)
-        self.actions.editMode.setEnabled(not edit)
-
-    def setCreateMode(self):
-        assert self.advanced()
-        self.toggleDrawMode(False)
-
-    def setEditMode(self):
-        assert self.advanced()
-        self.toggleDrawMode(True)
-        self.labelSelectionChanged()
 
     def updateFileMenu(self):
         currFilePath = self.filePath
@@ -698,7 +689,6 @@ class MainWindow(QMainWindow, WindowMixin):
     def editLabel(self):
         if not self.canvas.editing():
             return
-        #item = self.currentItem()
         self.labelDialog.updateListItems(self.labelHist)
         res = self.labelDialog.popUp()
 
@@ -710,6 +700,7 @@ class MainWindow(QMainWindow, WindowMixin):
     def fileitemClicked(self, index):
         if self.autoSaving.isChecked():
             if self.defaultSaveDir is not None:
+                self.extra_delegate.earlyCommit()
                 if self.dirty is True:
                     self.saveFile()
             else:
@@ -861,15 +852,11 @@ class MainWindow(QMainWindow, WindowMixin):
         shapes = [format_shape(shape) for shape in self.canvas.shapes]
         # Can add differrent annotation formats here
         try:
-            if self.usingPascalVocFormat is True:
-                if ustr(annotationFilePath[-4:]) != ".xml":
-                    annotationFilePath += XML_EXT
-                print ('Img: ' + self.filePath + ' -> Its xml: ' + annotationFilePath)
-                self.labelFile.savePascalVocFormat(annotationFilePath, shapes, self.filePath, self.imageData,
-                                                   self.lineColor.getRgb(), self.fillColor.getRgb())
-            else:
-                self.labelFile.save(annotationFilePath, shapes, self.filePath, self.imageData,
-                                    self.lineColor.getRgb(), self.fillColor.getRgb())
+            if ustr(annotationFilePath[-4:]) != ".xml":
+                annotationFilePath += XML_EXT
+            print ('Img: ' + self.filePath + ' -> Its xml: ' + annotationFilePath)
+            self.labelFile.savePascalVocFormat(annotationFilePath, shapes, self.filePath, self.imageData,
+                                                self.lineColor.getRgb(), self.fillColor.getRgb())
             return True
         except LabelFileError as e:
             self.errorMessage(u'Error saving label data', u'<b>%s</b>' % e)
@@ -905,10 +892,9 @@ class MainWindow(QMainWindow, WindowMixin):
             shape.highlightCornerDefault=self.drawCorner.isChecked()
 
             self.addLabel(shape)
-            if self.beginner():  # Switch to edit mode.
-                self.canvas.setEditing(True)
-                self.actions.create.setEnabled(True)
-                self.actions.createRo.setEnabled(True)
+            self.canvas.setEditing(True)
+            self.actions.create.setEnabled(True)
+            self.actions.createRo.setEnabled(True)
 
             self.setDirty()
 
@@ -1064,7 +1050,6 @@ class MainWindow(QMainWindow, WindowMixin):
             self.toggleActions(True)
 
             # Label xml file and show bound box according to its filename
-            # if self.usingPascalVocFormat is True:
             if self.defaultSaveDir is not None:
                 basename = os.path.basename(
                     os.path.splitext(self.filePath)[0])
@@ -1080,8 +1065,6 @@ class MainWindow(QMainWindow, WindowMixin):
                 if os.path.isfile(xmlPath):
                     self.loadPascalXMLByFilename(xmlPath)
 
-            # self.setWindowTitle(__appname__ + ' ' + filePath)
-            
             self.canvas.setFocus(True)
             return True
         return False
@@ -1136,7 +1119,6 @@ class MainWindow(QMainWindow, WindowMixin):
         settings[SETTING_LINE_COLOR] = self.lineColor
         settings[SETTING_FILL_COLOR] = self.fillColor
         settings[SETTING_RECENT_FILES] = self.recentFiles
-        settings[SETTING_ADVANCE_MODE] = not self._beginner
         if self.defaultSaveDir and os.path.exists(self.defaultSaveDir):
             settings[SETTING_SAVE_DIR] = ustr(self.defaultSaveDir)
         else:
@@ -1148,6 +1130,7 @@ class MainWindow(QMainWindow, WindowMixin):
             settings[SETTING_LAST_OPEN_DIR] = ""
 
         settings[SETTING_AUTO_SAVE] = self.autoSaving.isChecked()
+        settings[SETTING_DRAW_CORNER] = self.drawCorner.isChecked()
         settings[SETTING_PAINT_LABEL] = self.paintLabelsOption.isChecked()
         settings.save()
     ## User Dialogs ##
@@ -1194,13 +1177,12 @@ class MainWindow(QMainWindow, WindowMixin):
 
         path = os.path.dirname(ustr(self.filePath))\
             if self.filePath else '.'
-        if self.usingPascalVocFormat:
-            filters = "Open Annotation XML file (%s)" % ' '.join(['*.xml'])
-            filename = ustr(QFileDialog.getOpenFileName(self,'%s - Choose a xml file' % __appname__, path, filters))
-            if filename:
-                if isinstance(filename, (tuple, list)):
-                    filename = filename[0]
-            self.loadPascalXMLByFilename(filename)
+        filters = "Open Annotation XML file (%s)" % ' '.join(['*.xml'])
+        filename = ustr(QFileDialog.getOpenFileName(self,'%s - Choose a xml file' % __appname__, path, filters))
+        if filename:
+            if isinstance(filename, (tuple, list)):
+                filename = filename[0]
+        self.loadPascalXMLByFilename(filename)
 
     def openDirDialog(self, _value=False, dirpath=None):
         if not self.mayContinue():
@@ -1248,9 +1230,9 @@ class MainWindow(QMainWindow, WindowMixin):
             self.saveFile()
 
     def openPrevImg(self, _value=False):
-        # Proceding prev image without dialog if having any label
         if self.autoSaving.isChecked():
             if self.defaultSaveDir is not None:
+                self.extra_delegate.earlyCommit()
                 if self.dirty is True:
                     self.saveFile()
             else:
@@ -1273,13 +1255,9 @@ class MainWindow(QMainWindow, WindowMixin):
                 self.loadFile(filename)
 
     def openNextImg(self, _value=False):
-        # Proceding prev image without dialog if having any label
-
-        # TODO: extra info may lost in editing
-        #self.model.
-        #self.labelList2.le
         if self.autoSaving.isChecked():
             if self.defaultSaveDir is not None:
+                self.extra_delegate.earlyCommit()
                 if self.dirty is True:
                     self.saveFile()
             else:

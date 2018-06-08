@@ -26,7 +26,6 @@ except ImportError:
     from PyQt4.QtGui import *
     from PyQt4.QtCore import *
 
-import resources
 # Add internal libs
 from libs.constants import *
 from libs.lib import struct, newAction, newIcon, addActions, fmtShortcut, generateColorByText
@@ -42,7 +41,7 @@ from libs.pascal_voc_io import PascalVocReader, XML_EXT
 from libs.cmylist import MyFileListModel
 from libs.ustr import ustr
 from libs.version import __version__
-import typing
+#import typing
 
 __appname__ = 'labelImg2'
 
@@ -121,6 +120,7 @@ class CComboBoxDelegate(QStyledItemDelegate):
 
     def updateEditorGeometry(self, editor, option, index):
         editor.setGeometry(option.rect)
+
 
 class CEditDelegate(QStyledItemDelegate):
     def __init__(self, parent):
@@ -262,33 +262,33 @@ class MainWindow(QMainWindow, WindowMixin):
         labelListContainer.setLayout(listLayout)
 
         
-        self.labelList2 = QTableView()
-        self.labelList2.setStyleSheet("selection-background-color: rgb(0,90,140)")
+        self.labelList = QTableView()
+        self.labelList.setStyleSheet("selection-background-color: rgb(0,90,140)")
         
         
-        myHeader = CHeaderView(Qt.Vertical, self.labelList2)
+        myHeader = CHeaderView(Qt.Vertical, self.labelList)
         myHeader.clicked.connect(self.headerCheckedChanged)
-        self.labelList2.setVerticalHeader(myHeader)
+        self.labelList.setVerticalHeader(myHeader)
 
         self.label_delegate = CComboBoxDelegate(self, self.labelHist)
         self.extra_delegate = CEditDelegate(self)
-        self.labelList2.setItemDelegateForColumn(0, self.label_delegate)
-        self.labelList2.setItemDelegateForColumn(1, self.extra_delegate)
+        self.labelList.setItemDelegateForColumn(0, self.label_delegate)
+        self.labelList.setItemDelegateForColumn(1, self.extra_delegate)
 
-        self.model = QStandardItemModel(self.labelList2)
+        self.model = QStandardItemModel(self.labelList)
         self.model.setColumnCount(2)
         self.model.setHorizontalHeaderLabels(["Label", "Extra Info"])
         self.model.dataChanged.connect(self.handleDataChange)
-        self.labelList2.setModel(self.model)
+        self.labelList.setModel(self.model)
 
         
-        self.labelList2.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.labelList.setSelectionBehavior(QAbstractItemView.SelectRows)
         
 
-        self.sm = self.labelList2.selectionModel()
+        self.sm = self.labelList.selectionModel()
         self.sm.selectionChanged.connect(self.labelSelectionChanged2)
 
-        listLayout.addWidget(self.labelList2)
+        listLayout.addWidget(self.labelList)
 
         self.dock = QDockWidget(u'Box Labels', self)
         self.dock.setObjectName(u'Labels')
@@ -342,55 +342,63 @@ class MainWindow(QMainWindow, WindowMixin):
         self.dockFeatures = QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetFloatable
         self.dock.setFeatures(self.dock.features() ^ self.dockFeatures)
 
+        self.displayTimer = QTimer(self)
+        self.displayTimer.setInterval(1000)
+        #self.displayTimer.setSingleShot(True)
+        self.displayTimer.timeout.connect(self.autoNext)
+
+        self.playing = False
+
         # Actions
         action = partial(newAction, self)
         quit = action('&Quit', self.close,
-                      'Ctrl+Q', 'quit', u'Quit application')
+                      'Ctrl+Q', 'power.svg', u'Quit application')
 
         open = action('&Open', self.openFile,
-                      'Ctrl+O', 'open', u'Open image or label file')
+                      'Ctrl+O', 'open.svg', u'Open image or label file')
 
         opendir = action('&Open Dir', self.openDirDialog,
-                         'Ctrl+u', 'opendir', u'Open Dir')
+                         'Ctrl+u', 'dir.svg', u'Open Dir')
 
         changeSavedir = action('&Change Save Dir', self.changeSavedirDialog,
-                               'Ctrl+r', 'opendir', u'Change default saved Annotation dir')
+                               'Ctrl+r', 'dir.svg', u'Change default saved Annotation dir')
 
         openAnnotation = action('&Open Annotation', self.openAnnotationDialog,
-                                'Ctrl+Shift+O', 'open', u'Open Annotation')
+                                'Ctrl+Shift+O', 'open.svg', u'Open Annotation')
 
         openPrevImg = action('&Prev Image', self.openPrevImg,
-                             'a', 'prev', u'Open Prev')
+                             'a', 'previous.svg', u'Open Prev')
 
         openNextImg = action('&Next Image', self.openNextImg,
-                             'd', 'next', u'Open Next')
+                             'd', 'next.svg', u'Open Next')
 
         verify = action('&Verify Image', self.verifyImg,
-                        'space', 'verify', u'Verify Image')
+                        'space', 'downloaded.svg', u'Verify Image')
 
         save = action('&Save', self.saveFile,
-                      'Ctrl+S', 'save', u'Save labels to file', enabled=False)
+                      'Ctrl+S', 'save.svg', u'Save labels to file', enabled=False)
 
         saveAs = action('&Save As', self.saveFileAs,
-                        'Ctrl+Shift+S', 'save-as', u'Save labels to a different file', enabled=False)
+                        'Ctrl+Shift+S', 'save.svg', u'Save labels to a different file', enabled=False)
 
-        close = action('&Close', self.closeFile, 'Ctrl+W', 'close', u'Close current file')
+        close = action('&Close', self.closeFile, 'Ctrl+W', 'close.svg', u'Close current file')
 
-        resetAll = action('&ResetAll', self.resetAll, None, 'resetall', u'Reset all')
+        resetAll = action('&ResetAll', self.resetAll, None, 'reset.svg', u'Reset all')
 
         create = action('Create\nRectBox', self.createShape,
-                        'w', 'new', u'Draw a new Box', enabled=False)
+                        'w', 'rect.png', u'Draw a new Box', enabled=False)
 
         createRo = action('Create\nRotatedRBox', self.createRoShape,
-                        'e', 'newRo', u'Draw a new RotatedRBox', enabled=False)        
+                        'e', 'rectRo.png', u'Draw a new RotatedRBox', enabled=False)        
         
         delete = action('Delete\nRectBox', self.deleteSelectedShape,
-                        'Delete', 'delete', u'Delete', enabled=False)
+                        'Delete', 'cancel2.svg', u'Delete', enabled=False)
+
         copy = action('&Duplicate\nRectBox', self.copySelectedShape,
-                      'Ctrl+D', 'copy', u'Create a duplicate of the selected Box',
+                      'Ctrl+D', 'copy.svg', u'Create a duplicate of the selected Box',
                       enabled=False)
 
-        showInfo = action('&About', self.showInfoDialog, None, 'help', u'About')
+        showInfo = action('&About', self.showInfoDialog, None, 'info.svg', u'About')
 
         zoom = QWidgetAction(self)
         zoom.setDefaultWidget(self.zoomWidget)
@@ -401,17 +409,21 @@ class MainWindow(QMainWindow, WindowMixin):
         self.zoomWidget.setEnabled(False)
 
         zoomIn = action('Zoom &In', partial(self.addZoom, 10),
-                        'Ctrl++', 'zoom-in', u'Increase zoom level', enabled=False)
+                        'Ctrl++', 'zoom-in.svg', u'Increase zoom level', enabled=False)
         zoomOut = action('&Zoom Out', partial(self.addZoom, -10),
-                         'Ctrl+-', 'zoom-out', u'Decrease zoom level', enabled=False)
+                         'Ctrl+-', 'zoom-out.svg', u'Decrease zoom level', enabled=False)
         zoomOrg = action('&Original size', partial(self.setZoom, 100),
-                         'Ctrl+=', 'zoom', u'Zoom to original size', enabled=False)
+                         'Ctrl+=', 'zoom100.svg', u'Zoom to original size', enabled=False)
         fitWindow = action('&Fit Window', self.setFitWindow,
-                           'Ctrl+F', 'fit-window', u'Zoom follows window size',
+                           'Ctrl+F', 'zoomReset.svg', u'Zoom follows window size',
                            checkable=True, enabled=False)
         fitWidth = action('Fit &Width', self.setFitWidth,
-                          'Ctrl+Shift+F', 'fit-width', u'Zoom follows window width',
+                          'Ctrl+Shift+F', 'fit-width.svg', u'Zoom follows window width',
                           checkable=True, enabled=False)
+        
+        play = action('Play', self.playStart,
+                    'Ctrl+Shift+P', 'play.svg', u'auto next',
+                    checkable=True, enabled=True)
         
         # Group zoom controls into a list for easier toggling.
         zoomActions = (self.zoomWidget, zoomIn, zoomOut,
@@ -425,7 +437,7 @@ class MainWindow(QMainWindow, WindowMixin):
         }
 
         edit = action('&Manage Labels', self.editLabel,
-                      'Ctrl+M', 'edit', u'Modify the label of the selected Box',
+                      'Ctrl+M', 'tags.svg', u'Modify the label of the selected Box',
                       enabled=True)
         self.editButton.setDefaultAction(edit)
 
@@ -437,7 +449,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.actions = struct(save=save, saveAs=saveAs, open=open, close=close, resetAll = resetAll,
                               create=create, createRo=createRo, delete=delete, edit=edit, copy=copy,
                               zoom=zoom, zoomIn=zoomIn, zoomOut=zoomOut, zoomOrg=zoomOrg,
-                              fitWindow=fitWindow, fitWidth=fitWidth,
+                              fitWindow=fitWindow, fitWidth=fitWidth, play=play,
                               zoomActions=zoomActions,
                               fileMenuActions=(
                                   open, opendir, save, saveAs, close, resetAll, quit),
@@ -498,7 +510,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.tools = self.toolbar('Tools')
         self.actions.beginner = (openPrevImg, openNextImg, None,
             open, opendir, changeSavedir, verify, save, None, create, createRo, copy, delete, None,
-            zoomIn, zoom, zoomOut, zoomOrg, fitWindow, fitWidth)
+            zoomIn, zoom, zoomOut, zoomOrg, fitWindow, fitWidth, None, play)
 
         self.statusBar().showMessage('%s started.' % __appname__)
         self.statusBar().show()
@@ -591,6 +603,21 @@ class MainWindow(QMainWindow, WindowMixin):
         self.actions.create.setEnabled(True)
         self.actions.createRo.setEnabled(True)
 
+    def autoNext(self):
+        if self.playing:
+            suc = self.openNextImg()
+            if not suc:
+                self.actions.play.triggered.emit(False)
+                self.actions.play.setChecked(False)
+
+    def playStart(self, value=True):
+        if value:
+            self.playing = True
+            self.displayTimer.start()
+        else:
+            self.playing = False
+            self.displayTimer.stop()
+
     def toggleActions(self, value=True):
         """Enable/Disable widgets which depend on an opened image."""
         for z in self.actions.zoomActions:
@@ -616,7 +643,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.labelCoordinates.clear()
         self.imageDim.clear()
 
-    def currentItem2(self):
+    def currentItem(self):
         index = self.sm.selectedIndexes()
         if index:
             return self.model.itemFromIndex(index[0])
@@ -629,6 +656,12 @@ class MainWindow(QMainWindow, WindowMixin):
             shape.label = self.model.data(topLeft)
             if sys.version_info < (3, 0, 0):
                 shape.label = shape.label.toPyObject()
+            color = generateColorByText(shape.label)
+            item1 = self.model.item(topLeft.row(), 1)
+            item0.setBackground(color)
+            item1.setBackground(color)
+            shape.line_color = color
+            shape.fill_color = color
         else:
             shape.extra_label = self.model.data(topLeft)
             if sys.version_info < (3, 0, 0):
@@ -686,7 +719,7 @@ class MainWindow(QMainWindow, WindowMixin):
         files = [f for f in self.recentFiles if f !=
                  currFilePath and exists(f)]
         for i, f in enumerate(files):
-            icon = newIcon('labels')
+            icon = newIcon('print-setup.svg')
             action = QAction(
                 icon, '&%d %s' % (i + 1, QFileInfo(f).fileName()), self)
             action.triggered.connect(partial(self.loadRecent, f))
@@ -723,7 +756,7 @@ class MainWindow(QMainWindow, WindowMixin):
         if not self.canvas.editing():
             return
         
-        item0 = self.currentItem2()
+        item0 = self.currentItem()
         if item0 is None:
             item0 = self.model.item(self.model.rowCount() - 1,0)
 
@@ -753,11 +786,11 @@ class MainWindow(QMainWindow, WindowMixin):
             if shape:
                 item0 = self.ShapeItemDict[shape]
                 index = self.model.indexFromItem(item0)
-                self.labelList2.selectRow(index.row())
+                self.labelList.selectRow(index.row())
 
             else:
 
-                self.labelList2.clearSelection()
+                self.labelList.clearSelection()
         self.actions.delete.setEnabled(selected)
         self.actions.copy.setEnabled(selected)
 
@@ -766,8 +799,9 @@ class MainWindow(QMainWindow, WindowMixin):
 
         item0 = HashableQStandardItem(shape.label)
         item1 = QStandardItem(shape.extra_label)
-        item0.setBackground(generateColorByText(shape.label))
-        item1.setBackground(generateColorByText(shape.label))
+        color = generateColorByText(shape.label)
+        item0.setBackground(color)
+        item1.setBackground(color)
         self.model.appendRow([item0, item1])
 
         self.ShapeItemDict[shape] = item0
@@ -875,7 +909,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
 
     def labelSelectionChanged2(self, selected, deselected):
-        item0 = self.currentItem2()
+        item0 = self.currentItem()
         if item0 is not None and self.canvas.editing():
             self._noSelectionSlot =True
             shape = self.ItemShapeDict[item0]
@@ -1268,13 +1302,13 @@ class MainWindow(QMainWindow, WindowMixin):
                     self.saveFile()
             else:
                 self.changeSavedirDialog()
-                return
+                return False
 
         if not self.mayContinue():
-            return
+            return False
 
         if self.mImgList.rowCount() == 0:
-            return
+            return False
 
         filename = None
         if self.filePath is None:
@@ -1286,6 +1320,9 @@ class MainWindow(QMainWindow, WindowMixin):
 
         if filename:
             self.loadFile(filename)
+            return True
+        
+        return False
 
     def openFile(self, _value=False):
         if not self.mayContinue():
@@ -1430,7 +1467,7 @@ def get_main_app(argv=[]):
     """
     app = QApplication(argv)
     app.setApplicationName(__appname__)
-    app.setWindowIcon(newIcon("app"))
+    app.setWindowIcon(newIcon("tag-black-shape.svg"))
     # Tzutalin 201705+: Accept extra agruments to change predefined class file
     # Usage : labelImg.py image predefClassFile saveDir
     win = MainWindow(argv[1] if len(argv) >= 2 else None,

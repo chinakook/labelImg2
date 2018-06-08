@@ -19,8 +19,6 @@ CURSOR_DRAW = Qt.CrossCursor
 CURSOR_MOVE = Qt.ClosedHandCursor
 CURSOR_GRAB = Qt.OpenHandCursor
 
-# class Canvas(QGLWidget):
-
 
 class Canvas(QWidget):
     zoomRequest = pyqtSignal(int)
@@ -75,7 +73,8 @@ class Canvas(QWidget):
         self.canOutOfBounding = False
         self.showCenter = False
         
-        #self.drawCornerEnabled = True
+        #self.setAttribute(Qt.WA_PaintOnScreen)
+        
 
     def setDrawingColor(self, qColor):
         self.drawingLineColor = qColor
@@ -178,7 +177,8 @@ class Canvas(QWidget):
             if self.selectedVertex():
                 self.boundedMoveVertex(pos)
                 self.shapeMoved.emit()
-                self.selectedShape.highlightCorner = True
+                if self.selectedShape:
+                    self.selectedShape.highlightCorner = True
                 self.repaint()
             elif self.selectedShape and self.prevPoint:
                 self.overrideCursor(CURSOR_MOVE)
@@ -556,12 +556,20 @@ class Canvas(QWidget):
             return super(Canvas, self).paintEvent(event)
 
         p = self._painter
+
+        #ur = event.rect()
+        #tmppix = QPixmap(ur.size())
+        #p = QPainter(tmppix)
+        #p.translate(-ur.x(), -ur.y())
+        ##p.begin(self)
+
         p.begin(self)
+
         p.setRenderHint(QPainter.Antialiasing)
         p.setRenderHint(QPainter.HighQualityAntialiasing)
         if self.scale < 1.0:
             p.setRenderHint(QPainter.SmoothPixmapTransform)
-
+            
         p.scale(self.scale, self.scale)
         p.translate(self.offsetToCenter())
 
@@ -608,6 +616,12 @@ class Canvas(QWidget):
             self.setPalette(pal)
 
         p.end()
+
+        #pp = self._painter
+        #pp.begin(self)
+        #pp.drawPixmap(0,0,tmppix)
+        #pp.end()
+        
 
     def transformPos(self, point):
         """Convert from widget-logical coordinates to painter-logical coordinates."""

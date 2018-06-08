@@ -12,7 +12,7 @@ except ImportError:
 
 
 def newIcon(icon):
-    return QIcon(':/' + icon)
+    return QIcon('img/' + icon)
 
 
 def newButton(text, icon=None, slot=None):
@@ -82,4 +82,4 @@ def generateColorByText(text):
     r = int((hashCode / 255) % 255)
     g = int((hashCode / 65025)  % 255)
     b = int((hashCode / 16581375)  % 255)
-    return QColor(r, g, b, 100)
+    return QColor(r, g, b, 200)

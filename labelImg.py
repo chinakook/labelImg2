@@ -191,14 +191,11 @@ class MainWindow(QMainWindow, WindowMixin):
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock)
         # Tzutalin 20160906 : Add file list and dock to move faster
         self.addDockWidget(Qt.RightDockWidgetArea, self.filedock)
+        self.dock.setFeatures(QDockWidget.DockWidgetFloatable)
         self.filedock.setFeatures(QDockWidget.DockWidgetFloatable)
-
-        self.dockFeatures = QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetFloatable
-        self.dock.setFeatures(self.dock.features() ^ self.dockFeatures)
 
         self.displayTimer = QTimer(self)
         self.displayTimer.setInterval(1000)
-        #self.displayTimer.setSingleShot(True)
         self.displayTimer.timeout.connect(self.autoNext)
 
         self.playing = False

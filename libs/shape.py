@@ -121,7 +121,7 @@ class Shape(object):
 
             line_path = QPainterPath()
             vrtx_path = QPainterPath()
-
+            
             line_path.moveTo(self.points[0])
             # Uncommenting the following line will draw 2 paths
             # for the 1st vertex, and make it non-filled, which
@@ -148,16 +148,18 @@ class Shape(object):
                     min_y = min(min_y, point.y())
                 if min_x != sys.maxsize and min_y != sys.maxsize:
                     font = QFont()
-                    font.setPointSize(28)
-                    font.setBold(True)
+                    font.setPointSize(20/self.scale) # TODO : max
+                    font.setBold(False)
                     painter.setFont(font)
+                    # TODO: optimize
                     if sys.version_info < (3, 0, 0) and isinstance(self.label, QVariant):
                         self.label = ustr(self.label.toPyObject())
                     if(self.label == None):
                         self.label = ""
+                    painter.setPen(QColor(255,0,0))
+                    painter.drawText(min_x, min_y, self.extra_label)
+                    painter.setPen(pen)
                     
-                    painter.drawText(min_x, min_y, self.label)
-
             if self.fill:
                 color = self.select_fill_color if self.selected else self.fill_color
                 painter.fillPath(line_path, color)

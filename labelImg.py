@@ -131,7 +131,6 @@ class MainWindow(QMainWindow, WindowMixin):
         labelListContainer = QWidget()
         labelListContainer.setLayout(listLayout)
 
-        #QTableView.selectionModel()
         self.labelList = CLabelView(self.labelHist)
         self.labelModel = self.labelList.model()
         self.labelModel.dataChanged.connect(self.labelDataChanged)

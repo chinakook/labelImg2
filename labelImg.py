@@ -34,14 +34,12 @@ from libs.shape import Shape, DEFAULT_LINE_COLOR, DEFAULT_FILL_COLOR
 from libs.canvas import Canvas
 from libs.zoomWidget import ZoomWidget
 from libs.labelDialog import LabelDialog
-from libs.colorDialog import ColorDialog
 from libs.labelFile import LabelFile, LabelFileError
-from libs.toolBar import ToolBar
 from libs.pascal_voc_io import PascalVocReader, XML_EXT
-from libs.cmylist import MyFileListModel
 from libs.ustr import ustr
-from libs.version import __version__
-#import typing
+
+from libs.labelView import CLabelView, HashableQStandardItem
+from libs.fileView import CFileView
 
 __appname__ = 'labelImg2'
 
@@ -64,145 +62,19 @@ class WindowMixin(object):
         return menu
 
     def toolbar(self, title, actions=None):
-        toolbar = ToolBar(title)
+        toolbar = QToolBar(title)
         toolbar.setObjectName(u'%sToolBar' % title)
         # toolbar.setOrientation(Qt.Vertical)
-        toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        # toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
         if actions:
-            addActions(toolbar, actions)
+            if isinstance(action, QWidgetAction):
+                return super(ToolBar, self).addAction(action)
+            btn = QToolButton()
+            btn.setDefaultAction(action)
+            btn.setToolButtonStyle(Qt.ToolButtonIconOnly)
+            toolbar.addWidget(btn)
         self.addToolBar(Qt.TopToolBarArea, toolbar)
         return toolbar
-
-
-class HashableQStandardItem(QStandardItem):
-    def __init__(self, text):
-        super(HashableQStandardItem, self).__init__(text)
-
-    def __hash__(self):
-        return hash(id(self))
-
-
-class CComboBoxDelegate(QStyledItemDelegate):
-    def __init__(self, parent, listItem):
-        super(CComboBoxDelegate, self).__init__(parent)
-        self.listItem = listItem
-
-    def updateListItem(self, listItem):
-        self.listItem = listItem
-
-    def createEditor(self, parent, option, index):
-        editor = QComboBox(parent)
-        for i in self.listItem:
-            editor.addItem(i)
-        editor.currentIndexChanged.connect(self.editorIndexChanged)
-        editor.setCurrentIndex(0)
-        return editor
-
-    # commit data early, prevent to loss data when clicking OpenNextImg
-    def editorIndexChanged(self, index):
-        combox = self.sender()
-        self.commitData.emit(combox)
-
-    def setEditorData(self, editor, index):
-        text = index.model().data(index, Qt.EditRole)
-        if sys.version_info < (3, 0, 0):
-            text = text.toPyObject()
-        combox = editor
-        tindex = combox.findText(ustr(text))
-        combox.setCurrentIndex(tindex)
-
-    def setModelData(self, editor, model, index):
-        comboBox = editor
-        strData = comboBox.currentText()
-        oldstrData = index.model().data(index, Qt.EditRole)
-        if strData != oldstrData:
-            model.setData(index, strData, Qt.EditRole)
-
-    def updateEditorGeometry(self, editor, option, index):
-        editor.setGeometry(option.rect)
-
-
-class CEditDelegate(QStyledItemDelegate):
-    def __init__(self, parent):
-        super(CEditDelegate, self).__init__(parent)
-        self.currsender = None
-        self.currstr = None
-
-    def createEditor(self, parent, option, index):
-        editor = QLineEdit(parent)
-        editor.textEdited.connect(self.editorTextEdited)
-        return editor
-
-    def setEditorData(self, editor, index):
-        self.currsender = None
-        self.currstr = None
-        return super(CEditDelegate, self).setEditorData(editor, index)
-
-    def editorTextEdited(self, editorstr):
-        self.currsender = self.sender()
-        self.currstr = editorstr
-
-    def earlyCommit(self):
-        if self.currsender is not None and self.currstr is not None:
-            # TODO: bug here,  should disable create rect when editing
-            print(self.currsender)
-            self.commitData.emit(self.currsender)
-        
-
-class CHeaderView(QHeaderView):
-    clicked = pyqtSignal(int, bool)
-    _x_offset = 3
-    _y_offset = 0 # This value is calculated later, based on the height of the paint rect
-    _width = 20
-    _height = 20
-
-    def __init__(self, orientation, parent=None):
-        super(CHeaderView, self).__init__(orientation, parent)
-        self.setFixedWidth(40)
-        self.isChecked = []
-
-    def rowsInserted(self, parent, start, end):
-        self.isChecked.insert(start, 1)
-        return super(CHeaderView, self).rowsInserted(parent, start, end)
-
-    def rowsAboutToBeRemoved(self, parent, start, end):
-        del self.isChecked[start]
-        return super(CHeaderView, self).rowsAboutToBeRemoved(parent, start, end)
-
-    def paintSection(self, painter, rect, logicalIndex):
-        self._y_offset = int((rect.height()-self._width)/2.)
-        
-        option = QStyleOptionButton()
-        option.state = QStyle.State_Enabled | QStyle.State_Active
-        option.rect = QRect(rect.x() + self._x_offset, rect.y() + self._y_offset, self._width, self._height)
-        
-        if self.isChecked[logicalIndex]:
-            option.state |= QStyle.State_On
-        else:
-            option.state |= QStyle.State_Off
-
-        self.style().drawPrimitive(QStyle.PE_IndicatorCheckBox, option, painter)
-        #self.style().drawControl(QStyle.CE_CheckBox, option, painter)
-    
-    def mouseReleaseEvent(self, e):
-        index = self.logicalIndexAt(e.pos())
-        
-        if 0 <= index < self.count():
-            # vertical orientation
-            y = self.sectionViewportPosition(index)
-            if self._x_offset < e.pos().x() < self._x_offset + self._width \
-                and y + self._y_offset < e.pos().y() < y + self._y_offset + self._height:
-                if self.isChecked[index] == 1:
-                    self.isChecked[index] = 0
-                else:
-                    self.isChecked[index] = 1
-                self.clicked.emit(index, self.isChecked[index])
-                
-                self.viewport().update()
-            else:
-                super(CHeaderView, self).mousePressEvent(e)
-        else:
-            super(CHeaderView, self).mousePressEvent(e)
 
 
 class MainWindow(QMainWindow, WindowMixin):
@@ -239,8 +111,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self.ShapeItemDict = {}
         self.ItemShapeDict = {}
 
-        self.prevLabelText = ''
-
         listLayout = QVBoxLayout()
         listLayout.setContentsMargins(0, 0, 0, 0)
 
@@ -261,32 +131,17 @@ class MainWindow(QMainWindow, WindowMixin):
         labelListContainer = QWidget()
         labelListContainer.setLayout(listLayout)
 
+        #QTableView.selectionModel()
+        self.labelList = CLabelView(self.labelHist)
+        self.labelModel = self.labelList.model()
+        self.labelModel.dataChanged.connect(self.labelDataChanged)
         
-        self.labelList = QTableView()
-        self.labelList.setStyleSheet("selection-background-color: rgb(0,90,140)")
-        
-        
-        myHeader = CHeaderView(Qt.Vertical, self.labelList)
-        myHeader.clicked.connect(self.headerCheckedChanged)
-        self.labelList.setVerticalHeader(myHeader)
+        self.labelsm = self.labelList.selectionModel()
+        self.labelsm.currentChanged.connect(self.labelCurrentChanged)
 
-        self.label_delegate = CComboBoxDelegate(self, self.labelHist)
-        self.extra_delegate = CEditDelegate(self)
-        self.labelList.setItemDelegateForColumn(0, self.label_delegate)
-        self.labelList.setItemDelegateForColumn(1, self.extra_delegate)
+        myHeader = self.labelList.verticalHeader()
+        myHeader.clicked.connect(self.labelHeaderClicked)
 
-        self.model = QStandardItemModel(self.labelList)
-        self.model.setColumnCount(2)
-        self.model.setHorizontalHeaderLabels(["Label", "Extra Info"])
-        self.model.dataChanged.connect(self.handleDataChange)
-        self.labelList.setModel(self.model)
-
-        
-        self.labelList.setSelectionBehavior(QAbstractItemView.SelectRows)
-        
-
-        self.sm = self.labelList.selectionModel()
-        self.sm.selectionChanged.connect(self.labelSelectionChanged2)
 
         listLayout.addWidget(self.labelList)
 
@@ -294,11 +149,12 @@ class MainWindow(QMainWindow, WindowMixin):
         self.dock.setObjectName(u'Labels')
         self.dock.setWidget(labelListContainer)
 
-        self.fileListView = QListView()
+        self.fileListView = CFileView()
         
-        self.mImgList = MyFileListModel(self.fileListView)
-        self.fileListView.setModel(self.mImgList)
-        self.fileListView.clicked.connect(self.fileitemClicked)
+
+        self.fileModel = self.fileListView.model()
+        self.filesm = self.fileListView.selectionModel()
+        self.filesm.currentChanged.connect(self.fileCurrentChanged)
 
 
         filelistLayout = QVBoxLayout()
@@ -312,7 +168,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self.filedock.setWidget(fileListContainer)
 
         self.zoomWidget = ZoomWidget()
-        self.colorDialog = ColorDialog(parent=self)
 
         self.canvas = Canvas(parent=self)
         self.canvas.zoomRequest.connect(self.zoomRequest)
@@ -632,8 +487,8 @@ class MainWindow(QMainWindow, WindowMixin):
         self.statusBar().showMessage(message, delay)
 
     def resetState(self):
-        self.model.clear()
-        self.model.setHorizontalHeaderLabels(["Label", "Extra Info"])
+        self.labelModel.clear()
+        self.labelModel.setHorizontalHeaderLabels(["Label", "Extra Info"])
         self.ShapeItemDict.clear()
         self.ItemShapeDict.clear()
         self.filePath = None
@@ -643,27 +498,21 @@ class MainWindow(QMainWindow, WindowMixin):
         self.labelCoordinates.clear()
         self.imageDim.clear()
 
-    def currentItem(self):
-        index = self.sm.selectedIndexes()
-        if index:
-            return self.model.itemFromIndex(index[0])
-        return None
-
-    def handleDataChange(self, topLeft, bottomRight):
-        item0 = self.model.item(topLeft.row(), 0)
+    def labelDataChanged(self, topLeft, bottomRight):
+        item0 = self.labelModel.item(topLeft.row(), 0)
         shape = self.ItemShapeDict[item0]
         if topLeft.column() == 0:
-            shape.label = self.model.data(topLeft)
+            shape.label = self.labelModel.data(topLeft)
             if sys.version_info < (3, 0, 0):
                 shape.label = shape.label.toPyObject()
             color = generateColorByText(shape.label)
-            item1 = self.model.item(topLeft.row(), 1)
+            item1 = self.labelModel.item(topLeft.row(), 1)
             item0.setBackground(color)
             item1.setBackground(color)
             shape.line_color = color
             shape.fill_color = color
         else:
-            shape.extra_label = self.model.data(topLeft)
+            shape.extra_label = self.labelModel.data(topLeft)
             if sys.version_info < (3, 0, 0):
                 shape.extra_label = shape.extra_label.toPyObject()
         self.setDirty()
@@ -733,19 +582,19 @@ class MainWindow(QMainWindow, WindowMixin):
 
         if res is not None:
             self.labelHist, self.default_label = res
-            self.label_delegate.updateListItem(self.labelHist)
-        
-    # Tzutalin 20160906 : Add file list and dock to move faster
-    def fileitemClicked(self, index):
+            self.labelList.updateLabelList(self.labelHist)
+
+
+    def fileCurrentChanged(self, current, previous):
         if self.autoSaving.isChecked():
             if self.defaultSaveDir is not None:
-                self.extra_delegate.earlyCommit()
+                self.labelList.earlyCommit()
                 if self.dirty is True:
                     self.saveFile()
             else:
                 self.changeSavedirDialog()
                 return
-        filename = self.mImgList.data(index, Qt.EditRole)
+        filename = self.fileModel.data(current, Qt.EditRole)
         if filename:
             self.loadFile(filename)
 
@@ -756,9 +605,9 @@ class MainWindow(QMainWindow, WindowMixin):
         if not self.canvas.editing():
             return
         
-        item0 = self.currentItem()
+        item0 = self.labelModel.itemFromIndex(self.labelModel.index(self.labelsm.currentIndex().row(), 0))
         if item0 is None:
-            item0 = self.model.item(self.model.rowCount() - 1,0)
+            item0 = self.labelModel.item(self.labelModel.rowCount() - 1,0)
 
         difficult = self.diffcButton.isChecked()
 
@@ -785,8 +634,9 @@ class MainWindow(QMainWindow, WindowMixin):
             shape = self.canvas.selectedShape
             if shape:
                 item0 = self.ShapeItemDict[shape]
-                index = self.model.indexFromItem(item0)
+                index = self.labelModel.indexFromItem(item0)
                 self.labelList.selectRow(index.row())
+                #self.labelsm.setCurrentIndex(index, QItemSelectionModel.SelectCurrent)
 
             else:
 
@@ -802,7 +652,7 @@ class MainWindow(QMainWindow, WindowMixin):
         color = generateColorByText(shape.label)
         item0.setBackground(color)
         item1.setBackground(color)
-        self.model.appendRow([item0, item1])
+        self.labelModel.appendRow([item0, item1])
 
         self.ShapeItemDict[shape] = item0
         self.ItemShapeDict[item0] = shape
@@ -815,9 +665,9 @@ class MainWindow(QMainWindow, WindowMixin):
             return
 
         item0 = self.ShapeItemDict[shape]
-        index = self.model.indexFromItem(item0)
+        index = self.labelModel.indexFromItem(item0)
         
-        self.model.removeRows(index.row(), 1)
+        self.labelModel.removeRows(index.row(), 1)
         del self.ShapeItemDict[shape]
         del self.ItemShapeDict[item0]
 
@@ -864,7 +714,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
             if not label in self.labelHist:
                 self.labelHist.append(label)
-                self.label_delegate.updateListItem(self.labelHist)
+                self.labelList.updateLabelList(self.labelHist)
                 
 
             self.addLabel(shape)
@@ -908,16 +758,16 @@ class MainWindow(QMainWindow, WindowMixin):
         self.shapeSelectionChanged(True)
 
 
-    def labelSelectionChanged2(self, selected, deselected):
-        item0 = self.currentItem()
-        if item0 is not None and self.canvas.editing():
+    def labelCurrentChanged(self, current, previous):
+        item0 = self.labelModel.itemFromIndex(self.labelModel.index(current.row(), 0))
+        if self.canvas.editing():
             self._noSelectionSlot =True
             shape = self.ItemShapeDict[item0]
             self.canvas.selectShape(shape)
             self.diffcButton.setChecked(shape.difficult)
 
-    def headerCheckedChanged(self, index, checked):
-        item0 = self.model.item(index, 0)
+    def labelHeaderClicked(self, index, checked):
+        item0 = self.labelModel.item(index, 0)
         shape = self.ItemShapeDict[item0]
         self.canvas.setShapeVisible(shape, checked)
 
@@ -926,7 +776,6 @@ class MainWindow(QMainWindow, WindowMixin):
         text = self.default_label
         extra_text = ""
         if text is not None:
-            self.prevLabelText = text
             generate_color = generateColorByText(text)
             shape = self.canvas.setLastLabel(text, generate_color, generate_color, extra_text)
             shape.highlightCornerDefault=self.drawCorner.isChecked()
@@ -1036,17 +885,7 @@ class MainWindow(QMainWindow, WindowMixin):
         filePath = ustr(filePath)
 
         unicodeFilePath = ustr(filePath)
-        # Tzutalin 20160906 : Add file list and dock to move faster
-        # Highlight the file item
-        if unicodeFilePath and self.mImgList.rowCount() > 0:
-            sl = self.mImgList.stringList()
-            if sys.version_info < (3, 0, 0):
-                index = sl.indexOf(unicodeFilePath)
-            else:
-                index = sl.index(unicodeFilePath)
-                
-            self.fileListView.setCurrentIndex(self.mImgList.index(index))
-
+        
         if unicodeFilePath and os.path.exists(unicodeFilePath):
             if LabelFile.isLabelFile(unicodeFilePath):
                 try:
@@ -1248,7 +1087,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.filePath = None
         
         imglist = self.scanAllImages(dirpath)
-        self.mImgList.setStringList(imglist)
+        self.fileModel.setStringList(imglist)
 
         self.defaultSaveDir = dirpath
         self.setWindowTitle(__appname__ + ' ' + self.dirname)
@@ -1270,59 +1109,26 @@ class MainWindow(QMainWindow, WindowMixin):
             self.saveFile()
 
     def openPrevImg(self, _value=False):
-        if self.autoSaving.isChecked():
-            if self.defaultSaveDir is not None:
-                self.extra_delegate.earlyCommit()
-                if self.dirty is True:
-                    self.saveFile()
-            else:
-                self.changeSavedirDialog()
-                return
+        currIndex = self.filesm.currentIndex()
+        if currIndex.row() - 1 < 0:
+            return False
 
-        if not self.mayContinue():
-            return
+        prevIndex = self.fileModel.index(currIndex.row() - 1)
+        
+        self.filesm.setCurrentIndex(prevIndex, QItemSelectionModel.SelectCurrent)
 
-        if self.mImgList.rowCount() == 0:
-            return
-
-        if self.filePath is None:
-            return
-
-        currIndex = self.fileListView.currentIndex().row()
-        if currIndex - 1 >= 0:
-            filename = self.mImgList.data(self.mImgList.index(currIndex - 1), Qt.EditRole)
-            if filename:
-                self.loadFile(filename)
+        return True
 
     def openNextImg(self, _value=False):
-        if self.autoSaving.isChecked():
-            if self.defaultSaveDir is not None:
-                self.extra_delegate.earlyCommit()
-                if self.dirty is True:
-                    self.saveFile()
-            else:
-                self.changeSavedirDialog()
-                return False
-
-        if not self.mayContinue():
+        currIndex = self.filesm.currentIndex()
+        if currIndex.row() + 1 >= self.fileModel.rowCount():
             return False
 
-        if self.mImgList.rowCount() == 0:
-            return False
-
-        filename = None
-        if self.filePath is None:
-            filename = self.mImgList.data(self.mImgList.index(0), Qt.EditRole)
-        else:
-            currIndex = self.fileListView.currentIndex().row()
-            if currIndex + 1 < self.mImgList.rowCount():
-                filename = self.mImgList.data(self.mImgList.index(currIndex + 1), Qt.EditRole)
-
-        if filename:
-            self.loadFile(filename)
-            return True
+        nextIndex = self.fileModel.index(currIndex.row() + 1)
         
-        return False
+        self.filesm.setCurrentIndex(nextIndex, QItemSelectionModel.SelectCurrent)
+
+        return True
 
     def openFile(self, _value=False):
         if not self.mayContinue():

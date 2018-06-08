@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+
 import sys
 try:
     from PyQt5.QtGui import *
@@ -7,10 +10,35 @@ except ImportError:
     from PyQt4.QtGui import *
     from PyQt4.QtCore import *
 
-from libs.lib import newIcon, labelValidator
-from libs.cmylist import CMyListModel
+from .lib import newIcon, labelValidator
 
 BB = QDialogButtonBox
+
+
+class CMyListModel(QStringListModel):
+    def __init__(self, parent = None):
+        super(CMyListModel, self).__init__(parent)
+        self.rowColors = {}
+        
+
+    def data(self, index, role):
+        if role == Qt.BackgroundRole:
+            if index.row() in self.rowColors:
+                return self.rowColors[index.row()]
+
+        return super(CMyListModel, self).data(index, role)
+
+    def setData(self, index, value, role = None):
+        if role == Qt.BackgroundRole:
+            self.rowColors[index.row()] = value
+            return True
+
+        return super(CMyListModel, self).setData(index, value, role)
+
+    def flags(self, index):
+        flags = super(CMyListModel, self).flags(index)
+        flags ^= Qt.ItemIsEditable
+        return flags
 
 
 class LabelDialog(QDialog):
@@ -40,13 +68,15 @@ class LabelDialog(QDialog):
         self.horlayout.addWidget(self.addBtn)
         self.horlayout.addWidget(self.setDefaultBtn)
 
-        self.listWidget = QListView(self)
+        self.listView = QListView(self)
 
-        self.model = CMyListModel(self.listWidget)
+        self.model = CMyListModel(self.listView)
         
 
         self.model.setStringList(listItem)
-        self.listWidget.setModel(self.model)
+        self.listView.setModel(self.model)
+
+        self.sm = self.listView.selectionModel()
 
         if listItem is not None:
             self.default_label = listItem[0]
@@ -58,7 +88,7 @@ class LabelDialog(QDialog):
         self.updateListItems(listItem)
         
         
-        self.layout.addWidget(self.listWidget)
+        self.layout.addWidget(self.listView)
         self.layout.addLayout(self.horlayout)
         self.layout.addWidget(bb)
         self.setLayout(self.layout)
@@ -71,13 +101,11 @@ class LabelDialog(QDialog):
             lastrow = self.model.rowCount()
             self.model.insertRows(lastrow, 1)
             self.model.setData(self.model.index(lastrow), self.edit.text(), Qt.EditRole)
-            self.listWidget.setCurrentIndex(self.model.index(lastrow))
+            self.listView.setCurrentIndex(self.model.index(lastrow))
 
 
     def defaultLabel(self):
-        indexes = self.listWidget.selectedIndexes()
-        if indexes is None:
-            return
+        curr = self.sm.currentIndex()
 
         sl = self.model.stringList()
         if sys.version_info < (3, 0, 0):
@@ -87,10 +115,10 @@ class LabelDialog(QDialog):
             
         self.model.setData(self.model.index(j), QBrush(Qt.transparent), Qt.BackgroundRole)
 
-        self.default_label = self.model.data(indexes[0], Qt.EditRole)
+        self.default_label = self.model.data(curr, Qt.EditRole)
         if sys.version_info < (3, 0, 0):
             self.default_label = self.default_label.toPyObject()
-        self.model.setData(self.model.index(indexes[0].row()), QBrush(Qt.red), Qt.BackgroundRole)
+        self.model.setData(self.model.index(curr.row()), QBrush(Qt.red), Qt.BackgroundRole)
 
 
     def validate(self):

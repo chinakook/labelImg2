@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+
 from math import sqrt
-from libs.ustr import ustr
+from .ustr import ustr
 import hashlib
 try:
     from PyQt5.QtGui import *

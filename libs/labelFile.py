@@ -1,12 +1,15 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
+
 try:
     from PyQt5.QtGui import QImage
 except ImportError:
     from PyQt4.QtGui import QImage
 
 from base64 import b64encode, b64decode
-from libs.pascal_voc_io import PascalVocWriter
-from libs.pascal_voc_io import XML_EXT
-import os.path
+from .pascal_voc_io import PascalVocWriter
+from .pascal_voc_io import XML_EXT
+import os
 import sys
 import math
 

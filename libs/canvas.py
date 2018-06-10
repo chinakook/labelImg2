@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import absolute_import
 
 try:
     from PyQt5.QtGui import *
@@ -9,8 +11,8 @@ except ImportError:
 
 #from PyQt4.QtOpenGL import *
 
-from libs.shape import Shape
-from libs.lib import distance
+from .shape import Shape
+from .lib import distance
 import math
 
 CURSOR_DEFAULT = Qt.ArrowCursor

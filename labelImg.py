@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from __future__ import absolute_import
+
 import codecs
 import distutils.spawn
-import os.path
+import os
 import platform
 import re
 import sys

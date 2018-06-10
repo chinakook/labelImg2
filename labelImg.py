@@ -184,10 +184,10 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.zoomWidget = ZoomWidget()
 
-        self.canvas = Canvas(parent=self)
+        scroll = QScrollArea()
+        self.canvas = Canvas(parent=scroll)
         self.canvas.zoomRequest.connect(self.zoomRequest)
 
-        scroll = QScrollArea()
         scroll.setWidget(self.canvas)
         scroll.setWidgetResizable(True)
         self.scrollBars = {

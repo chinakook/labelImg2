@@ -55,6 +55,9 @@ class Canvas(QWidget):
         self.offsets = QPointF(), QPointF()
         self.scale = 1.0
         self.pixmap = QPixmap()
+        
+        self.localScalePixmap = QPixmap()
+
         self.visible = {}
         self._hideBackround = False
         self.hideBackround = False
@@ -227,6 +230,14 @@ class Canvas(QWidget):
                 self.update()
             self.hVertex, self.hShape = None, None
             self.overrideCursor(CURSOR_DEFAULT)
+
+        self.localScalePixmap = self.grab(QRect(ev.pos().x(), ev.pos().y(), 30, 30))
+        #self.localScalePixmap.grabWidget(self, pos.x(), pos.y(), 30, 30) # TODO: pyQt4
+        w = self.localScalePixmap.width()
+        h = self.localScalePixmap.height()
+        self.localScalePixmap = self.localScalePixmap.scaled(w * 5, h * 5, Qt.KeepAspectRatio)
+        self.repaint()
+
 
     def mousePressEvent(self, ev):
         pos = self.transformPos(ev.pos())
@@ -558,7 +569,7 @@ class Canvas(QWidget):
             return super(Canvas, self).paintEvent(event)
 
         p = self._painter
-
+        
         #ur = event.rect()
         #tmppix = QPixmap(ur.size())
         #p = QPainter(tmppix)
@@ -566,6 +577,8 @@ class Canvas(QWidget):
         ##p.begin(self)
 
         p.begin(self)
+
+
 
         p.setRenderHint(QPainter.Antialiasing)
         p.setRenderHint(QPainter.HighQualityAntialiasing)
@@ -617,6 +630,18 @@ class Canvas(QWidget):
             pal = self.palette()
             pal.setColor(self.backgroundRole(), QColor(232, 232, 232, 255))
             self.setPalette(pal)
+
+        p.translate(-self.offsetToCenter())
+        p.scale(1/self.scale, 1/self.scale)
+        if self.localScalePixmap is not None:
+            p0 = QPoint(0, 0)
+            p1 = self.mapFromParent(p0)
+            if p1.x() > 0:
+                p0.setX(p1.x())
+            if p1.y() > 0:
+                p0.setY(p1.y())
+            
+            p.drawPixmap(p0.x(), p0.y(), self.localScalePixmap)
 
         p.end()
 
@@ -907,4 +932,5 @@ class Canvas(QWidget):
     def resetState(self):
         self.restoreCursor()
         self.pixmap = None
+        self.localScalePixmap = None
         self.update()

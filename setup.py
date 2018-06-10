@@ -25,18 +25,18 @@ OPTIONS = {
 
 setup(
     app=APP,
-    name='labelImg',
+    name='labelImg2',
     version=__version__,
-    description="LabelImg is a graphical image annotation tool and label object bounding boxes in images",
+    description="LabelImg2 is a graphical image annotation tool and label object bounding boxes in images",
     long_description=readme + '\n\n' + history,
     author="TzuTa Lin",
     author_email='tzu.ta.lin@gmail.com',
-    url='https://github.com/tzutalin/labelImg',
+    url='https://github.com/chinakook/labelImg2',
     package_dir={'labelImg': '.'},
     packages=required_packages,
     entry_points={
         'console_scripts': [
-            'labelImg=labelImg.labelImg:main'
+            'labelImg2=labelImg2.labelImg:main'
         ]
     },
     include_package_data=True,

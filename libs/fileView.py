@@ -37,32 +37,16 @@ class CFileListModel(QStringListModel):
 
         return super(CFileListModel, self).setData(index, value, role)
 
-    #def flags(self, index):
-    #    flags = super(CFileListModel, self).flags(index)
-    #    flags ^= Qt.ItemIsEditable
-        
-    #    return flags
-
 
 class CFileItemEditDelegate(QStyledItemDelegate):
     def __init__(self, parent):
         super(CFileItemEditDelegate, self).__init__(parent)
-        self.currsender = None
-        self.currstr = None
 
     def createEditor(self, parent, option, index):
         editor = QLineEdit(parent)
-        editor.textEdited.connect(self.editorTextEdited)
+        editor.setReadOnly(True)
         return editor
 
-    def setEditorData(self, editor, index):
-        self.currsender = None
-        self.currstr = None
-        return super(CFileItemEditDelegate, self).setEditorData(editor, index)
-
-    def editorTextEdited(self, editorstr):
-        self.currsender = self.sender()
-        self.currstr = editorstr
 
 class CFileView(QListView):
     def __init__(self, parent = None):
@@ -70,6 +54,9 @@ class CFileView(QListView):
         
         model = CFileListModel(self)
         self.setModel(model)
+
+        delegate = CFileItemEditDelegate(self)
+        self.setItemDelegateForColumn(0, delegate)
         
         
 

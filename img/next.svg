@@ -1,11 +1,67 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!-- Generator: Adobe Illustrator 16.0.3, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg version="1.1" id="Layer_3" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-	 width="16px" height="16px" viewBox="0 0 16 16" enable-background="new 0 0 16 16" xml:space="preserve">
-<linearGradient id="SVGID_1_" gradientUnits="userSpaceOnUse" x1="8.4995" y1="1.2915" x2="8.4995" y2="14.7289">
-	<stop  offset="0" style="stop-color:#808080"/>
-	<stop  offset="1" style="stop-color:#4D4D4D"/>
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   version="1.1"
+   id="Layer_3"
+   x="0px"
+   y="0px"
+   width="16px"
+   height="16px"
+   viewBox="0 0 16 16"
+   enable-background="new 0 0 16 16"
+   xml:space="preserve"
+   sodipodi:docname="next.svg"
+   inkscape:version="0.92.3 (2405546, 2018-03-11)"><metadata
+   id="metadata4105"><rdf:RDF><cc:Work
+       rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
+         rdf:resource="http://purl.org/dc/dcmitype/StillImage" /></cc:Work></rdf:RDF></metadata><defs
+   id="defs4103" /><sodipodi:namedview
+   pagecolor="#ffffff"
+   bordercolor="#666666"
+   borderopacity="1"
+   objecttolerance="10"
+   gridtolerance="10"
+   guidetolerance="10"
+   inkscape:pageopacity="0"
+   inkscape:pageshadow="2"
+   inkscape:window-width="1200"
+   inkscape:window-height="714"
+   id="namedview4101"
+   showgrid="false"
+   inkscape:zoom="36.165452"
+   inkscape:cx="9.4237288"
+   inkscape:cy="7.2881356"
+   inkscape:window-x="0"
+   inkscape:window-y="0"
+   inkscape:window-maximized="0"
+   inkscape:current-layer="Layer_3" />
+<linearGradient
+   id="SVGID_1_"
+   gradientUnits="userSpaceOnUse"
+   x1="8.4995"
+   y1="1.2915"
+   x2="8.4995"
+   y2="14.7289">
+	<stop
+   offset="0"
+   style="stop-color:#808080"
+   id="stop4093" />
+	<stop
+   offset="1"
+   style="stop-color:#4D4D4D"
+   id="stop4095" />
 </linearGradient>
-<polygon fill="url(#SVGID_1_)" points="1,1 5,8 1,15 5.906,15 16,8 16,8 6,1 "/>
+<polygon
+   points="16,8 16,8 6,1 1,1 5,8 1,15 5.906,15 "
+   id="polygon4098"
+   style="fill:url(#SVGID_1_)"
+   transform="matrix(0,1,-1.0711018,0,16.571102,-0.5)" />
 </svg>

@@ -157,13 +157,13 @@ class Canvas(QWidget):
 
         # Polygon copy moving.
         if Qt.RightButton & ev.buttons():
-            # if self.selectedShapeCopy and self.prevPoint:
-            #     self.overrideCursor(CURSOR_MOVE)
-            #     self.boundedMoveShape(self.selectedShapeCopy, pos)
-            #     self.repaint()
-            # elif self.selectedShape:
-            #     self.selectedShapeCopy = self.selectedShape.copy()
-            #     self.repaint()
+            #if self.selectedShapeCopy and self.prevPoint:
+            #    self.overrideCursor(CURSOR_MOVE)
+            #    self.boundedMoveShape(self.selectedShapeCopy, pos)
+            #    self.repaint()
+            #elif self.selectedShape:
+            #    self.selectedShapeCopy = self.selectedShape.copy()
+            #    self.repaint()
             if self.selectedVertex() and self.selectedShape.isRotated:
                 self.boundedRotateShape(pos)
                 self.shapeMoved.emit()
@@ -601,7 +601,8 @@ class Canvas(QWidget):
             p.drawRect(leftTop.x(), leftTop.y(), rectWidth, rectHeight)
 
         if self.drawing() and not self.prevPoint.isNull() and not self.outOfPixmap(self.prevPoint):
-            p.setPen(QColor(0, 0, 0))
+            p.setPen(QPen(QColor(0,255,0,80), 1/self.scale)) # TODO : limit pen width
+            
             p.drawLine(self.prevPoint.x(), 0, self.prevPoint.x(), self.pixmap.height())
             p.drawLine(0, self.prevPoint.y(), self.pixmap.width(), self.prevPoint.y())
 
@@ -641,7 +642,6 @@ class Canvas(QWidget):
         return not (0 <= p.x() <= w and 0 <= p.y() <= h)
 
     def finalise(self):
-        #assert self.current
         if self.current is None:
             return
         if self.current.points[0] == self.current.points[-1]:
@@ -751,9 +751,7 @@ class Canvas(QWidget):
             self.drawingPolygon.emit(False)
             self.update()
         elif key == Qt.Key_Escape and self.current is None:
-            print("ESCAPE")
             if self.drawing():
-                #self.setEditing(True)
                 self.cancelDraw.emit()
             self.finalise()
         elif key == Qt.Key_Return and self.canCloseShape():

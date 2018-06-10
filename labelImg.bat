@@ -1,0 +1,1 @@
+start cmd /c ""C:\Program Files (x86)\Microsoft Visual Studio\Shared\Anaconda3_64\pythonw" labelImg.py"

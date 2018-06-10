@@ -89,7 +89,7 @@ Create pre-defined classes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 You can edit the
-`data/predefined\_classes.txt <https://github.com/tzutalin/labelImg/blob/master/data/predefined_classes.txt>`__
+`data/predefined\_classes.txt <https://github.com/chinakook/labelImg2/blob/master/data/predefined_classes.txt>`__
 to load pre-defined classes
 
 Hotkeys
@@ -128,6 +128,6 @@ Send a pull request
 
 License
 ~~~~~~~
-`Free software: MIT license <https://github.com/tzutalin/labelImg/blob/master/LICENSE>`_
+`Free software: MIT license <https://github.com/chinakook/labelImg2/blob/master/LICENSE>`_
 
 Citation: Chinakook. LabelImg2. Git code (2018). https://github.com/chinakook/labelImg2

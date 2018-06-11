@@ -125,6 +125,24 @@ class Canvas(QWidget):
     def selectedVertex(self):
         return self.hVertex is not None
 
+    # reserve function
+    def updateLocalScaleMap(self, x, y):
+        pass
+        #if self.pixmap is None:
+        #    return
+
+        #rz = 15
+        #x0 = int(x) - rz
+        #x1 = int(x) + rz
+        #y0 = int(y) - rz
+        #y1 = int(y) + rz
+
+        #self.localScalePixmap = self.pixmap.copy(x0, y0, x1 - x0 + 1, y1 - y0 + 1) #self.grab(QRect(x0, y0, x1 - x0 + 1, y1 - y0 + 1))
+        ##self.localScalePixmap.grabWidget(self, pos.x(), pos.y(), 30, 30) # TODO: pyQt4
+        #w = self.localScalePixmap.width()
+        #h = self.localScalePixmap.height()
+        #self.localScalePixmap = self.localScalePixmap.scaled(w * 5, h * 5, Qt.KeepAspectRatio)
+
     def mouseMoveEvent(self, ev):
         """Update line with last point and current coordinates."""
         pos = self.transformPos(ev.pos())
@@ -157,6 +175,9 @@ class Canvas(QWidget):
                 self.current.highlightClear()
             else:
                 self.prevPoint = pos
+            
+            self.updateLocalScaleMap(pos.x(), pos.y())
+            
             self.repaint()
             return
 
@@ -173,6 +194,7 @@ class Canvas(QWidget):
                 self.boundedRotateShape(pos)
                 self.shapeMoved.emit()
                 self.selectedShape.highlightCorner = True
+
                 self.repaint()
             self.status.emit("(%d,%d)." % (pos.x(), pos.y()))
             return
@@ -184,12 +206,12 @@ class Canvas(QWidget):
                 self.shapeMoved.emit()
                 if self.selectedShape:
                     self.selectedShape.highlightCorner = True
-                self.repaint()
             elif self.selectedShape and self.prevPoint:
                 self.overrideCursor(CURSOR_MOVE)
                 self.boundedMoveShape(self.selectedShape, pos)
                 self.shapeMoved.emit()
-                self.repaint()
+            self.updateLocalScaleMap(pos.x(), pos.y())
+            self.repaint()
             return
 
         # Just hovering over the canvas, 2 posibilities:
@@ -208,8 +230,12 @@ class Canvas(QWidget):
                 shape.highlightCorner = True
                 shape.highlightVertex(index, shape.MOVE_VERTEX)
                 self.overrideCursor(CURSOR_POINT)
+                
+                
                 self.setToolTip("Click & drag to move point")
                 #self.setStatusTip(self.toolTip())
+                self.updateLocalScaleMap(pos.x(), pos.y())
+
                 self.update()
                 break
             elif shape.containsPoint(pos):
@@ -221,22 +247,23 @@ class Canvas(QWidget):
                     "%s\n %f %f %f %f" % (shape.label, shape.points[0].x(), shape.points[0].y(), shape.points[2].x(), shape.points[2].y()) )
                 #self.setStatusTip(self.toolTip())
                 self.overrideCursor(CURSOR_GRAB)
+                
+                self.updateLocalScaleMap(pos.x(), pos.y())
+
                 self.update()
                 break
         else:  # Nothing found, clear highlights, reset state.
             if self.hShape:
                 self.hShape.highlightClear()
                 #self.hShape.highlightCorner=False
+
+                self.updateLocalScaleMap(pos.x(), pos.y())
                 self.update()
+            else:
+                self.updateLocalScaleMap(pos.x(), pos.y())
+                self.repaint()
             self.hVertex, self.hShape = None, None
             self.overrideCursor(CURSOR_DEFAULT)
-
-        self.localScalePixmap = self.grab(QRect(ev.pos().x(), ev.pos().y(), 30, 30))
-        #self.localScalePixmap.grabWidget(self, pos.x(), pos.y(), 30, 30) # TODO: pyQt4
-        w = self.localScalePixmap.width()
-        h = self.localScalePixmap.height()
-        self.localScalePixmap = self.localScalePixmap.scaled(w * 5, h * 5, Qt.KeepAspectRatio)
-        self.repaint()
 
 
     def mousePressEvent(self, ev):
@@ -580,7 +607,7 @@ class Canvas(QWidget):
 
 
 
-        p.setRenderHint(QPainter.Antialiasing)
+        #p.setRenderHint(QPainter.Antialiasing)
         p.setRenderHint(QPainter.HighQualityAntialiasing)
         if self.scale < 1.0:
             p.setRenderHint(QPainter.SmoothPixmapTransform)

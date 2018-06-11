@@ -1,2 +1,2 @@
-zoom HUD
-FileView colorization
+zoom HUD: V, reserved
+FileView colorization: V

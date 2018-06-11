@@ -607,8 +607,10 @@ class MainWindow(QMainWindow, WindowMixin):
         self.statFile.setText('{0}/{1}'.format(current.row()+1, current.model().rowCount()))
         if self.autoSaving.isChecked():
             if self.defaultSaveDir is not None:
+                
                 self.labelList.earlyCommit()
                 if self.dirty is True:
+                    self.fileModel.setData(previous, len(self.canvas.shapes), Qt.BackgroundRole)
                     self.saveFile()
             else:
                 self.changeSavedirDialog()
@@ -1068,6 +1070,9 @@ class MainWindow(QMainWindow, WindowMixin):
         if dirpath is not None and len(dirpath) > 1:
             self.defaultSaveDir = dirpath
 
+        imglist = self.scanAllImages(self.dirname)
+        self.fileModel.setStringList(imglist, self.dirname, self.defaultSaveDir)
+
         self.statusBar().showMessage('%s . Annotation will be saved to %s' %
                                      ('Change saved folder', self.defaultSaveDir))
         self.statusBar().show()
@@ -1165,13 +1170,18 @@ class MainWindow(QMainWindow, WindowMixin):
             if isinstance(filename, (tuple, list)):
                 filename = filename[0]
             self.loadFile(filename)
-
+    
+    # TODO: recursive save
     def saveFile(self, _value=False):
+        
         if self.defaultSaveDir is not None and len(ustr(self.defaultSaveDir)):
             if self.filePath:
-                imgFileName = os.path.basename(self.filePath)
-                savedFileName = os.path.splitext(imgFileName)[0]
-                savedPath = os.path.join(ustr(self.defaultSaveDir), savedFileName)
+                relname = os.path.relpath(self.filePath, self.dirname)
+                relname = os.path.splitext(relname)[0]
+                savedPath = os.path.join(ustr(self.defaultSaveDir), relname)
+                #imgFileName = os.path.basename(self.filePath)
+                #savedFileName = os.path.splitext(imgFileName)[0]
+                #savedPath = os.path.join(ustr(self.defaultSaveDir), savedFileName)
                 self._saveFile(savedPath)
         else:
             imgFileDir = os.path.dirname(self.filePath)
@@ -1202,6 +1212,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def _saveFile(self, annotationFilePath):
         if annotationFilePath and self.saveLabels(annotationFilePath):
+
             self.setClean()
             self.statusBar().showMessage('Saved to  %s' % annotationFilePath)
             self.statusBar().show()

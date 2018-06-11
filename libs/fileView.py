@@ -10,30 +10,62 @@ try:
 except ImportError:
     from PyQt4.QtGui import *
     from PyQt4.QtCore import *
-
+from .pascal_voc_io import PascalVocReader, XML_EXT
 
 class CFileListModel(QStringListModel):
     def __init__(self, parent = None):
         super(CFileListModel, self).__init__(parent)
         
         self.dispList = []
-        
-    def setStringList(self, strings):
-        
-        self.dispList = [os.path.split(s)[1] for s in strings]
+    
+    def parseOne(self, s, openedDir = None, defaultSaveDir = None):
+        if openedDir is not None and defaultSaveDir is not None:
+            relname = os.path.relpath(s, openedDir)
+            relname = os.path.splitext(relname)[0]
+            xmlPath = os.path.join(defaultSaveDir, relname + XML_EXT)
+        else:
+            xmlPath = os.path.splitext(s)[0] + XML_EXT
+        if os.path.exists(xmlPath) and os.path.isfile(xmlPath):
+            tVocParser = PascalVocReader(xmlPath)
+            shapes = tVocParser.getShapes()
+            info = [os.path.split(s)[1], len(shapes), False]
+        else:
+            info = [os.path.split(s)[1], None, False]
+        return info
+
+    def setStringList(self, strings, openedDir = None, defaultSaveDir = None):
+        self.dispList.clear()
+
+        for s in strings:
+            info = self.parseOne(s, openedDir, defaultSaveDir)
+            self.dispList.append(info)
+
         return super(CFileListModel, self).setStringList(strings)
 
     def data(self, index, role):
         if role == Qt.DisplayRole:
-            return self.dispList[index.row()]
+            return '%s [%d]' % (self.dispList[index.row()][0], 0 if self.dispList[index.row()][1] is None else self.dispList[index.row()][1])
         elif role == Qt.ToolTipRole:
             return super(CFileListModel, self).data(index, Qt.EditRole)
+        elif role == Qt.BackgroundRole:
+            item = self.dispList[index.row()]
+            if item[1] is None or item[1] == 0:
+                brush = QBrush(Qt.transparent)
+            else:
+                brush = QBrush(Qt.lightGray)
+            if item[2]:
+                brush = QBrush(Qt.green)
+            return brush
         else:
             return super(CFileListModel, self).data(index, role)
 
     def setData(self, index, value, role = None):
 
-        self.dispList.append(os.path.split(value)[1])
+        if role == Qt.BackgroundRole:
+            info = self.dispList[index.row()]
+            info[1] = value
+            info[2] = True
+            self.dispList[index.row()] = info
 
         return super(CFileListModel, self).setData(index, value, role)
 

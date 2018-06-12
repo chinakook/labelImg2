@@ -34,7 +34,7 @@ class CFileListModel(QStringListModel):
         return info
 
     def setStringList(self, strings, openedDir = None, defaultSaveDir = None):
-        self.dispList.clear()
+        self.dispList = []
 
         for s in strings:
             info = self.parseOne(s, openedDir, defaultSaveDir)

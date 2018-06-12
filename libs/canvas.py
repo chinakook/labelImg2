@@ -56,7 +56,7 @@ class Canvas(QWidget):
         self.scale = 1.0
         self.pixmap = QPixmap()
         
-        self.localScalePixmap = QPixmap()
+        #self.localScalePixmap = QPixmap()
 
         self.visible = {}
         self._hideBackround = False
@@ -287,11 +287,11 @@ class Canvas(QWidget):
                 return
             menu = self.menus[bool(self.selectedShapeCopy)]
             self.restoreCursor()
-            if not menu.exec_(self.mapToGlobal(ev.pos()))\
-               and self.selectedShapeCopy:
-                # Cancel the move by deleting the shadow copy.
-                self.selectedShapeCopy = None
-                self.repaint()
+            menu.exec_(self.mapToGlobal(ev.pos()))
+            #if not menu.exec_(self.mapToGlobal(ev.pos())) and self.selectedShapeCopy:
+            #    # Cancel the move by deleting the shadow copy.
+            #    self.selectedShapeCopy = None
+            #    self.repaint()
         elif ev.button() == Qt.LeftButton and self.selectedShape:
             if self.selectedVertex():
                 self.overrideCursor(CURSOR_POINT)
@@ -658,17 +658,17 @@ class Canvas(QWidget):
             pal.setColor(self.backgroundRole(), QColor(232, 232, 232, 255))
             self.setPalette(pal)
 
-        p.translate(-self.offsetToCenter())
-        p.scale(1/self.scale, 1/self.scale)
-        if self.localScalePixmap is not None:
-            p0 = QPoint(0, 0)
-            p1 = self.mapFromParent(p0)
-            if p1.x() > 0:
-                p0.setX(p1.x())
-            if p1.y() > 0:
-                p0.setY(p1.y())
+        #p.translate(-self.offsetToCenter())
+        #p.scale(1/self.scale, 1/self.scale)
+        #if self.localScalePixmap is not None:
+        #    p0 = QPoint(0, 0)
+        #    p1 = self.mapFromParent(p0)
+        #    if p1.x() > 0:
+        #        p0.setX(p1.x())
+        #    if p1.y() > 0:
+        #        p0.setY(p1.y())
             
-            p.drawPixmap(p0.x(), p0.y(), self.localScalePixmap)
+        #    p.drawPixmap(p0.x(), p0.y(), self.localScalePixmap)
 
         p.end()
 
@@ -959,5 +959,5 @@ class Canvas(QWidget):
     def resetState(self):
         self.restoreCursor()
         self.pixmap = None
-        self.localScalePixmap = None
+        #self.localScalePixmap = None
         self.update()

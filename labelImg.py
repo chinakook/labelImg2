@@ -12,9 +12,8 @@ import subprocess
 
 from functools import partial
 from collections import defaultdict
-#from .mynatsort import natsort
-import mynatsort
 
+from mynatsort import natsort
 
 try:
     from PyQt5.QtGui import *
@@ -56,6 +55,17 @@ def have_qstring():
 
 def util_qt_strlistclass():
     return QStringList if have_qstring() else list
+
+
+#def lexicographical_compare(s0, s1):
+#    j = 0
+#    for i, is0 in enumerate(s0):
+#        if j == len(s1) - 1 or s1[j] < is0:
+#            return False
+#        elif is0 < s1[j]:
+#            return True
+#        j += 1
+#    return j != len(s1) - 1
 
 
 class WindowMixin(object):
@@ -957,12 +967,9 @@ class MainWindow(QMainWindow, WindowMixin):
             if self.defaultSaveDir is not None:
                 relname = os.path.relpath(self.filePath, self.dirname)
                 relname = os.path.splitext(relname)[0]
-                # TODO: defaultSaveDir changed to another dir need mkdir
+                # TODO: defaultSaveDir changed to another dir need mkdir for subdir
                 xmlPath = os.path.join(self.defaultSaveDir, relname + XML_EXT)
 
-                """Annotation file priority:
-                PascalXML > YOLO
-                """
                 if os.path.isfile(xmlPath):
                     self.loadPascalXMLByFilename(xmlPath)
             else:
@@ -1054,8 +1061,8 @@ class MainWindow(QMainWindow, WindowMixin):
                     relativePath = os.path.join(root, file)
                     path = ustr(os.path.abspath(relativePath))
                     images.append(path)
-        #images.sort(key=lambda x: x.lower())
-        images = mynatsort.natsort(images, key=lambda x: x.lower())
+        images = natsort(images, key=lambda x: x.lower())
+        #images.sort(key= lambda a, b: lexicographical_compare(a,b) )
         return images
 
     def changeSavedirDialog(self, _value=False):
@@ -1142,7 +1149,7 @@ class MainWindow(QMainWindow, WindowMixin):
         currIndex = self.filesm.currentIndex()
         if currIndex.row() - 1 < 0:
             return False
-
+        
         prevIndex = self.fileModel.index(currIndex.row() - 1)
         
         self.filesm.setCurrentIndex(prevIndex, QItemSelectionModel.SelectCurrent)
@@ -1172,7 +1179,6 @@ class MainWindow(QMainWindow, WindowMixin):
                 filename = filename[0]
             self.loadFile(filename)
     
-    # TODO: recursive save
     def saveFile(self, _value=False):
         
         if self.defaultSaveDir is not None and len(ustr(self.defaultSaveDir)):
@@ -1180,9 +1186,6 @@ class MainWindow(QMainWindow, WindowMixin):
                 relname = os.path.relpath(self.filePath, self.dirname)
                 relname = os.path.splitext(relname)[0]
                 savedPath = os.path.join(ustr(self.defaultSaveDir), relname)
-                #imgFileName = os.path.basename(self.filePath)
-                #savedFileName = os.path.splitext(imgFileName)[0]
-                #savedPath = os.path.join(ustr(self.defaultSaveDir), savedFileName)
                 self._saveFile(savedPath)
         else:
             imgFileDir = os.path.dirname(self.filePath)

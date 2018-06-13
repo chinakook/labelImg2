@@ -75,6 +75,9 @@ class Shape(object):
             self.points[i] = self.rotatePoint(p, theta)
         self.direction -= theta
         self.direction = self.direction % (2 * math.pi)
+        
+        # self.direction is the angle between y axis and the dotline, clockwise
+        #print(self.direction * 180 / math.pi)
 
     def rotatePoint(self, p, theta):
         order = p - self.center
@@ -165,14 +168,21 @@ class Shape(object):
                 painter.fillPath(line_path, color)
 
             if self.center is not None and self.isRotated:
+                edgemid = (self.points[0] + self.points[1]) / 2
+
                 center_path = QPainterPath()
-                d = self.point_size / self.scale
-                center_path.addRect(self.center.x() - d / 2, self.center.y() - d / 2, d, d)
+                
+                center_path.moveTo(edgemid)
+                center_path.lineTo(self.center)
+
+                pen.setStyle(Qt.DotLine)
+                painter.setPen(pen)
                 painter.drawPath(center_path)
-                if self.isRotated:
-                    painter.fillPath(center_path, self.vertex_fill_color)
-                else:
-                    painter.fillPath(center_path, QColor(0, 0, 0))
+                #d = self.point_size / self.scale
+                #center_path.addRect(self.center.x() - d / 2, self.center.y() - d / 2, d, d)
+                #painter.drawPath(center_path)
+                
+                #painter.fillPath(center_path, self.vertex_fill_color)
                     
             self.highlightCorner = self.highlightCornerDefault
 

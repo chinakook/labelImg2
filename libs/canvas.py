@@ -194,8 +194,8 @@ class Canvas(QWidget):
                 self.boundedRotateShape(pos)
                 self.shapeMoved.emit()
                 self.selectedShape.highlightCorner = True
-
                 self.repaint()
+
             self.status.emit("(%d,%d)." % (pos.x(), pos.y()))
             return
 
@@ -243,6 +243,7 @@ class Canvas(QWidget):
                     self.hShape.highlightClear()
                 self.hVertex, self.hShape = None, shape
                 shape.highlightCorner = True
+                # TODO: optimize here
                 self.setToolTip(
                     "%s\n %f %f %f %f" % (shape.label, shape.points[0].x(), shape.points[0].y(), shape.points[2].x(), shape.points[2].y()) )
                 #self.setStatusTip(self.toolTip())

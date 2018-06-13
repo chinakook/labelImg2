@@ -12,7 +12,8 @@ import subprocess
 
 from functools import partial
 from collections import defaultdict
-from natsort import natsort
+#from .mynatsort import natsort
+import mynatsort
 
 
 try:
@@ -1054,7 +1055,7 @@ class MainWindow(QMainWindow, WindowMixin):
                     path = ustr(os.path.abspath(relativePath))
                     images.append(path)
         #images.sort(key=lambda x: x.lower())
-        images = natsort(images, key=lambda x: x.lower())
+        images = mynatsort.natsort(images, key=lambda x: x.lower())
         return images
 
     def changeSavedirDialog(self, _value=False):

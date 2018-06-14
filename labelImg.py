@@ -13,7 +13,7 @@ import subprocess
 from functools import partial
 from collections import defaultdict
 
-from mynatsort import natsort
+from libs.naturalsort import natsort
 
 try:
     from PyQt5.QtGui import *
@@ -55,17 +55,6 @@ def have_qstring():
 
 def util_qt_strlistclass():
     return QStringList if have_qstring() else list
-
-
-#def lexicographical_compare(s0, s1):
-#    j = 0
-#    for i, is0 in enumerate(s0):
-#        if j == len(s1) - 1 or s1[j] < is0:
-#            return False
-#        elif is0 < s1[j]:
-#            return True
-#        j += 1
-#    return j != len(s1) - 1
 
 
 class WindowMixin(object):

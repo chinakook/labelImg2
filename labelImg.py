@@ -1050,6 +1050,7 @@ class MainWindow(QMainWindow, WindowMixin):
                     relativePath = os.path.join(root, file)
                     path = ustr(os.path.abspath(relativePath))
                     images.append(path)
+        # TODO: ascii decode error in natsort
         images = natsort(images, key=lambda x: x.lower())
         #images.sort(key= lambda a, b: lexicographical_compare(a,b) )
         return images

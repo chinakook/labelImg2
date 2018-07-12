@@ -1051,7 +1051,7 @@ class MainWindow(QMainWindow, WindowMixin):
                     path = ustr(os.path.abspath(relativePath))
                     images.append(path)
         # TODO: ascii decode error in natsort
-        images = natsort(images, key=lambda x: x.lower())
+        #images = natsort(images, key=lambda x: x.lower())
         #images.sort(key= lambda a, b: lexicographical_compare(a,b) )
         return images
 
@@ -1131,6 +1131,7 @@ class MainWindow(QMainWindow, WindowMixin):
                 self.saveFile()
                 self.labelFile.toggleVerify()
 
+            self.fileModel.setData(self.filesm.currentIndex(), len(self.canvas.shapes), Qt.BackgroundRole)
             self.canvas.verified = self.labelFile.verified
             self.paintCanvas()
             self.saveFile()

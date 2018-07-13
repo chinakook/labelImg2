@@ -136,6 +136,8 @@ class MainWindow(QMainWindow, WindowMixin):
         self.labelModel = self.labelList.model()
         self.labelModel.dataChanged.connect(self.labelDataChanged)
         
+        self.labelList.extraEditing.connect(self.updateLabelShowing)
+
         self.labelsm = self.labelList.selectionModel()
         self.labelsm.currentChanged.connect(self.labelCurrentChanged)
 
@@ -148,6 +150,8 @@ class MainWindow(QMainWindow, WindowMixin):
         self.dock = QDockWidget(u'Box Labels', self)
         self.dock.setObjectName(u'Labels')
         self.dock.setWidget(labelListContainer)
+
+        self.labelList.toggleEdit.connect(self.toggleExtraEditing)
 
         self.fileListView = CFileView()
         
@@ -202,6 +206,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.selectionChanged.connect(self.shapeSelectionChanged)
         self.canvas.drawingPolygon.connect(self.toggleDrawingSensitive)
         self.canvas.cancelDraw.connect(self.createCancel)
+        self.canvas.toggleEdit.connect(self.toggleExtraEditing)
 
         self.setCentralWidget(scroll)
         self.addDockWidget(Qt.RightDockWidgetArea, self.dock)
@@ -537,6 +542,12 @@ class MainWindow(QMainWindow, WindowMixin):
         
         return
 
+    def updateLabelShowing(self, index, str):
+        item0 = self.labelModel.item(index.row(), 0)
+        shape = self.ItemShapeDict[item0]
+        shape.extra_label = str
+        self.canvas.update()
+
     def addRecentFile(self, filePath):
         if filePath in self.recentFiles:
             self.recentFiles.remove(filePath)
@@ -575,6 +586,11 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def toggleDrawMode(self, edit=True):
         self.canvas.setEditing(edit)
+
+    def toggleExtraEditing(self, state):
+        index = self.labelsm.currentIndex()
+        editindex = self.labelModel.index(index.row(), 1)
+        self.labelList.edit(editindex)
 
     def updateFileMenu(self):
         currFilePath = self.filePath
@@ -619,6 +635,11 @@ class MainWindow(QMainWindow, WindowMixin):
         if filename:
             self.loadFile(filename)
 
+        if self.canvas.selectedShape:
+            self.canvas.selectedShape.selected = False
+            self.canvas.selectedShape = None
+            self.canvas.setHiding(False) 
+
     # Add chris
     def btnstate(self, item= None):
         """ Function to handle difficult examples
@@ -653,7 +674,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self._noSelectionSlot = False
         else:
             shape = self.canvas.selectedShape
-            if shape:
+            if shape and shape in self.ShapeItemDict:
                 item0 = self.ShapeItemDict[shape]
                 index = self.labelModel.indexFromItem(item0)
                 self.labelList.selectRow(index.row())
@@ -1142,7 +1163,7 @@ class MainWindow(QMainWindow, WindowMixin):
             return False
         
         prevIndex = self.fileModel.index(currIndex.row() - 1)
-        
+      
         self.filesm.setCurrentIndex(prevIndex, QItemSelectionModel.SelectCurrent)
 
         return True
@@ -1152,8 +1173,7 @@ class MainWindow(QMainWindow, WindowMixin):
         if currIndex.row() + 1 >= self.fileModel.rowCount():
             return False
 
-        nextIndex = self.fileModel.index(currIndex.row() + 1)
-        
+        nextIndex = self.fileModel.index(currIndex.row() + 1)      
         self.filesm.setCurrentIndex(nextIndex, QItemSelectionModel.SelectCurrent)
 
         return True

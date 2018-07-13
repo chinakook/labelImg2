@@ -36,6 +36,8 @@ class Canvas(QWidget):
 
     cancelDraw = pyqtSignal()
 
+    toggleEdit = pyqtSignal(bool)
+
     CREATE, EDIT = list(range(2))
 
     epsilon = 11.0
@@ -814,6 +816,12 @@ class Canvas(QWidget):
             self.finalise()
         elif key == Qt.Key_Return and self.canCloseShape():
             self.finalise()
+        elif key == Qt.Key_Enter:
+            if self.selectedShape:
+                self.toggleEdit.emit(True)
+            else:
+                if len(self.shapes) > 0:
+                    self.selectShape(self.shapes[0])
         elif key == Qt.Key_Left and self.selectedShape:
             self.moveOnePixel('Left')
         elif key == Qt.Key_Right and self.selectedShape:

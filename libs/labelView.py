@@ -62,28 +62,30 @@ class CComboBoxDelegate(QStyledItemDelegate):
 class CEditDelegate(QStyledItemDelegate):
     def __init__(self, parent):
         super(CEditDelegate, self).__init__(parent)
-        self.currsender = None
-        self.currstr = None
-
+        self.editor = None
+        self.parent = parent
+        
     def createEditor(self, parent, option, index):
-        editor = QLineEdit(parent)
-        editor.textEdited.connect(self.editorTextEdited)
-        return editor
+        self.editor = QLineEdit(parent)
+        self.editor.textEdited.connect(self.textEdited)
+        return self.editor
+
+    def textEdited(self, str):
+        self.parent.extraChanged(str)
 
     def setEditorData(self, editor, index):
-        self.currsender = None
-        self.currstr = None
         return super(CEditDelegate, self).setEditorData(editor, index)
 
-    def editorTextEdited(self, editorstr):
-        self.currsender = self.sender()
-        self.currstr = editorstr
+    def destroyEditor(self, editor, index):
+        self.parent.extraChanged(index.data())
+        ret = super(CEditDelegate, self).destroyEditor(editor, index)
+        self.editor = None
+        return ret
 
-    def earlyCommit(self):
-        if self.currsender is not None and self.currstr is not None:
-            # TODO: bug here,  should disable create rect when editing
-            print(self.currsender)
-            self.commitData.emit(self.currsender)
+    def earlyCommit(self, index):
+        if self.editor is not None:
+            self.commitData.emit(self.editor)
+            self.destroyEditor(self.editor, index)
 
 
 class CHeaderView(QHeaderView):
@@ -143,6 +145,8 @@ class CHeaderView(QHeaderView):
 
 
 class CLabelView(QTableView):
+    extraEditing = pyqtSignal(QModelIndex, str)
+    toggleEdit = pyqtSignal(bool)
     def __init__(self, labelHist, parent = None):
         super(CLabelView, self).__init__(parent)
         
@@ -165,8 +169,19 @@ class CLabelView(QTableView):
         
         self.sm = self.selectionModel()
 
+    def extraChanged(self, str):
+        self.extraEditing.emit(self.sm.currentIndex(), str)
+
     def earlyCommit(self):
-        self.extra_delegate.earlyCommit()
+        # TODO: verify currentIndex
+        extra_index = self.model().index(self.sm.currentIndex().row(), 1)
+        self.extra_delegate.earlyCommit(extra_index)
 
     def updateLabelList(self, labelHist):
         self.label_delegate.updateListItem(labelHist)
+
+    def keyPressEvent(self, e):
+        key = e.key()
+        if key == Qt.Key_Enter:
+            self.toggleEdit.emit(True)
+        return super(QTableView, self).keyPressEvent(e)

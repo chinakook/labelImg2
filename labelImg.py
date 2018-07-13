@@ -589,6 +589,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def toggleExtraEditing(self, state):
         index = self.labelsm.currentIndex()
+        #print("ExtraEditing", self.sender())
         editindex = self.labelModel.index(index.row(), 1)
         self.labelList.edit(editindex)
 
@@ -638,7 +639,7 @@ class MainWindow(QMainWindow, WindowMixin):
         if self.canvas.selectedShape:
             self.canvas.selectedShape.selected = False
             self.canvas.selectedShape = None
-            self.canvas.setHiding(False) 
+            self.canvas.setHiding(False)
 
     # Add chris
     def btnstate(self, item= None):

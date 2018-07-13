@@ -814,9 +814,9 @@ class Canvas(QWidget):
             if self.drawing():
                 self.cancelDraw.emit()
             self.finalise()
-        elif key == Qt.Key_Return and self.canCloseShape():
-            self.finalise()
-        elif key == Qt.Key_Enter:
+        elif key == Qt.Key_Return or key == Qt.Key_Enter:
+            if self.canCloseShape():
+                self.finalise()
             if self.selectedShape:
                 self.toggleEdit.emit(True)
             else:

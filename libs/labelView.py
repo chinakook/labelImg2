@@ -182,6 +182,7 @@ class CLabelView(QTableView):
 
     def keyPressEvent(self, e):
         key = e.key()
-        if key == Qt.Key_Enter:
-            self.toggleEdit.emit(True)
+        if key == Qt.Key_Return or key == Qt.Key_Enter:
+            if self.extra_delegate.editor is None:
+                self.toggleEdit.emit(True)
         return super(QTableView, self).keyPressEvent(e)

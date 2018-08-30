@@ -8,7 +8,8 @@ It is written in Python and uses Qt for its graphical interface.
 Annotations are saved as XML files in PASCAL VOC format, the format used
 by `ImageNet <http://www.image-net.org/>`__.
 
-![LabelImg2 with rotated box and extra label](img/screen0.jpg)
+.. image:: img/screen0.jpg
+     :alt: labelImg2 with rotated box and extra label
 
 Installation
 ------------------

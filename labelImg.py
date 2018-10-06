@@ -950,17 +950,24 @@ class MainWindow(QMainWindow, WindowMixin):
             else:
                 # Load image:
                 # read data first and store for saving into label file.
-                self.imageData = read(unicodeFilePath, None)
+                # self.imageData = read(unicodeFilePath, None)
                 self.labelFile = None
                 self.canvas.verified = False
 
-            image = QImage.fromData(self.imageData)
-            if image.isNull():
-                self.errorMessage(u'Error opening file',
-                                  u"<p>Make sure <i>%s</i> is a valid image file." % unicodeFilePath)
-                self.status("Error reading %s" % unicodeFilePath)
-                return False
+            # image = QImage.fromData(self.imageData)
+            # if image.isNull():
+            #     self.errorMessage(u'Error opening file',
+            #                       u"<p>Make sure <i>%s</i> is a valid image file." % unicodeFilePath)
+            #     self.status("Error reading %s" % unicodeFilePath)
+            #     return False
             #self.status("Loaded %s" % os.path.basename(unicodeFilePath))
+
+            reader0 = QImageReader(unicodeFilePath)
+            reader0.setAutoTransform(True)
+            # transformation = reader0.transformation()
+            # print(transformation)
+            image = reader0.read()
+
             self.image = image
             self.filePath = unicodeFilePath
             self.canvas.loadPixmap(QPixmap.fromImage(image))

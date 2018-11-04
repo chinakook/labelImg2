@@ -40,7 +40,7 @@ class Canvas(QWidget):
 
     CREATE, EDIT = list(range(2))
 
-    epsilon = 11.0
+    epsilon = 7.0
 
     def __init__(self, *args, **kwargs):
         super(Canvas, self).__init__(*args, **kwargs)
@@ -224,7 +224,7 @@ class Canvas(QWidget):
         for shape in reversed([s for s in self.shapes if self.isVisible(s)]):
             # Look for a nearby vertex to highlight. If that fails,
             # check if we happen to be inside a shape.
-            index = shape.nearestVertex(pos, self.epsilon)
+            index = shape.nearestVertex(pos, self.epsilon / self.scale if self.scale > 1 else self.epsilon)
             if index is not None:
                 if self.selectedVertex():
                     self.hShape.highlightClear()
@@ -247,7 +247,7 @@ class Canvas(QWidget):
                 shape.highlightCorner = True
                 # TODO: optimize here
                 self.setToolTip(
-                    "%s\n %f %f %f %f" % (shape.label, shape.points[0].x(), shape.points[0].y(), shape.points[2].x(), shape.points[2].y()) )
+                    "%s\n X: (%f, %f)\nY: (%f, %f)" % (shape.label, shape.points[0].x(), shape.points[2].x(), shape.points[0].y(), shape.points[2].y()) )
                 #self.setStatusTip(self.toolTip())
                 self.overrideCursor(CURSOR_GRAB)
                 

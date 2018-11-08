@@ -989,11 +989,16 @@ class MainWindow(QMainWindow, WindowMixin):
                 xmlPath = os.path.join(self.defaultSaveDir, relname + XML_EXT)
 
                 if os.path.isfile(xmlPath):
-                    self.loadPascalXMLByFilename(xmlPath)
+                    vocReader = self.loadPascalXMLByFilename(xmlPath)
             else:
                 xmlPath = os.path.splitext(filePath)[0] + XML_EXT
                 if os.path.isfile(xmlPath):
-                    self.loadPascalXMLByFilename(xmlPath)
+                    vocReader = self.loadPascalXMLByFilename(xmlPath)
+            if vocReader is not None:
+                vocWidth, vocHeight, _ = vocReader.getSize()
+                if self.image.width() != vocWidth or self.image.height() != vocHeight:
+                    #self.errorMessage("Image info not matched", "The width or height of annotation file is not matched with that of the image")
+                    self.saveFile()
 
             self.canvas.setFocus(True)
             return True
@@ -1298,14 +1303,15 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def loadPascalXMLByFilename(self, xmlPath):
         if self.filePath is None:
-            return
+            return None
         if os.path.isfile(xmlPath) is False:
-            return
+            return None
 
         tVocParseReader = PascalVocReader(xmlPath)
         shapes = tVocParseReader.getShapes()
         self.loadLabels(shapes)
         self.canvas.verified = tVocParseReader.verified
+        return tVocParseReader
 
     def togglePaintLabelsOption(self):
         paintLabelsOptionChecked = self.paintLabelsOption.isChecked()

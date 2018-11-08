@@ -184,6 +184,9 @@ class PascalVocReader:
         # shapes type:
         # [labbel, [(x1,y1), (x2,y2), (x3,y3), (x4,y4)], color, color, difficult]
         self.shapes = []
+        self.width = 0
+        self.height = 0
+        self.depth = 0
         self.filepath = filepath
         self.verified = False
         try:
@@ -193,6 +196,9 @@ class PascalVocReader:
 
     def getShapes(self):
         return self.shapes
+
+    def getSize(self):
+        return self.width, self.height, self.depth
 
     def addShape(self, label, bndbox, difficult, extra=None):
         xmin = int(eval(bndbox.find('xmin').text))
@@ -245,6 +251,14 @@ class PascalVocReader:
                 self.verified = True
         except KeyError:
             self.verified = False
+
+        sizetag = xmltree.find('size')
+        widthtag = sizetag.find('width')
+        heighttag = sizetag.find('height')
+        depthtag = sizetag.find('depth')
+        self.width = eval(widthtag.text)
+        self.height = eval(heighttag.text)
+        self.depth = eval(depthtag.text)
 
         for object_iter in xmltree.findall('object'):
             bndbox = object_iter.find("bndbox")

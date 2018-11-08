@@ -3,8 +3,11 @@ from __future__ import absolute_import
 
 try:
     from PyQt5.QtGui import QImage
+    from PyQt5.QtGui import QImageReader
 except ImportError:
     from PyQt4.QtGui import QImage
+    from PyQt4.QtGui import QImageReader
+
 
 from base64 import b64encode, b64decode
 from .pascal_voc_io import PascalVocWriter
@@ -36,10 +39,15 @@ class LabelFile(object):
         #imgFileNameWithoutExt = os.path.splitext(imgFileName)[0]
         # Read from file path because self.imageData might be empty if saving to
         # Pascal format
-        image = QImage()
-        image.load(imagePath)
+
+        reader0 = QImageReader(imagePath)
+        reader0.setAutoTransform(True)
+
+        image = reader0.read()
+        
         imageShape = [image.height(), image.width(),
                       1 if image.isGrayscale() else 3]
+        
         writer = PascalVocWriter(imgFolderName, imgFileName,
                                  imageShape, localImgPath=imagePath)
         writer.verified = self.verified

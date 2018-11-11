@@ -982,13 +982,14 @@ class MainWindow(QMainWindow, WindowMixin):
             self.toggleActions(True)
 
             # Label xml file and show bound box according to its filename
+            vocReader = None
             if self.defaultSaveDir is not None:
                 relname = os.path.relpath(self.filePath, self.dirname)
                 relname = os.path.splitext(relname)[0]
                 # TODO: defaultSaveDir changed to another dir need mkdir for subdir
                 xmlPath = os.path.join(self.defaultSaveDir, relname + XML_EXT)
 
-                if os.path.isfile(xmlPath):
+                if os.path.exists(xmlPath) and os.path.isfile(xmlPath):
                     vocReader = self.loadPascalXMLByFilename(xmlPath)
             else:
                 xmlPath = os.path.splitext(filePath)[0] + XML_EXT

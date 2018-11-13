@@ -53,7 +53,7 @@ class Shape(object):
         self.isRotated = True
 
         self.highlightCorner = False
-        self.highlightCornerDefault = False
+        self.alwaysShowCorner = False
 
         self._highlightIndex = None
         self._highlightMode = self.NEAR_VERTEX
@@ -184,7 +184,8 @@ class Shape(object):
                 
                 #painter.fillPath(center_path, self.vertex_fill_color)
                     
-            self.highlightCorner = self.highlightCornerDefault
+            self.highlightCorner = self.alwaysShowCorner
+
 
     def paintNormalCenter(self, painter):
         if self.center is not None:

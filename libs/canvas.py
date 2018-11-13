@@ -25,7 +25,7 @@ CURSOR_GRAB = Qt.OpenHandCursor
 class Canvas(QWidget):
     zoomRequest = pyqtSignal(int)
     scrollRequest = pyqtSignal(int, int)
-    newShape = pyqtSignal()
+    newShape = pyqtSignal(bool)
     selectionChanged = pyqtSignal(bool)
     shapeMoved = pyqtSignal()
     drawingPolygon = pyqtSignal(bool)
@@ -38,7 +38,10 @@ class Canvas(QWidget):
 
     toggleEdit = pyqtSignal(bool)
 
-    CREATE, EDIT = list(range(2))
+    #CREATE, EDIT = list(range(2))
+    CREATE = 0
+    EDIT = 1
+    CONTINUECREATE = 2
 
     epsilon = 7.0
 
@@ -81,6 +84,8 @@ class Canvas(QWidget):
         self.showCenter = False
         
         #self.setAttribute(Qt.WA_PaintOnScreen)
+
+
         
 
     def setDrawingColor(self, qColor):
@@ -102,18 +107,21 @@ class Canvas(QWidget):
     def drawing(self):
         return self.mode == self.CREATE
 
+    def continueDrawing(self):
+        return self.mode == self.CONTINUECREATE
+
     def editing(self):
         return self.mode == self.EDIT
 
     def setDrawCornerState(self, enabled):
         for shape in reversed([s for s in self.shapes if self.isVisible(s)]):
-            shape.highlightCornerDefault=enabled
+            shape.alwaysShowCorner=enabled
         self.repaint()
         self.update()
 
-    def setEditing(self, value=True):
-        self.mode = self.EDIT if value else self.CREATE
-        if not value:  # Create
+    def setEditing(self, value=1):
+        self.mode = value
+        if value == self.CREATE or value == self.CONTINUECREATE:  # Create
             self.unHighlight()
             self.deSelectShape()
         self.prevPoint = QPointF()
@@ -180,6 +188,11 @@ class Canvas(QWidget):
             
             self.updateLocalScaleMap(pos.x(), pos.y())
             
+            self.repaint()
+            return
+
+        if self.continueDrawing():
+            self.prevPoint = pos
             self.repaint()
             return
 
@@ -295,7 +308,7 @@ class Canvas(QWidget):
             #    # Cancel the move by deleting the shadow copy.
             #    self.selectedShapeCopy = None
             #    self.repaint()
-        elif ev.button() == Qt.LeftButton and self.selectedShape:
+        elif ev.button() == Qt.LeftButton and self.selectedShape and self.editing():
             if self.selectedVertex():
                 self.overrideCursor(CURSOR_POINT)
             else:
@@ -304,6 +317,9 @@ class Canvas(QWidget):
             pos = self.transformPos(ev.pos())
             if self.drawing():
                 self.handleDrawing(pos)
+
+            if self.continueDrawing():
+                self.handleClickDrawing(pos)
 
     def endMove(self, copy=False):
         assert self.selectedShape and self.selectedShapeCopy
@@ -348,6 +364,20 @@ class Canvas(QWidget):
             self.setHiding()
             self.drawingPolygon.emit(True)
             self.update()
+
+    def handleClickDrawing(self, pos):
+        if not self.outOfPixmap(pos):
+            self.current = Shape()
+            self.current.highlightCorner=True
+            minX = pos.x() - 30
+            maxX = pos.x() + 30
+            minY = pos.y() - 40
+            maxY = pos.y() + 40
+            self.current.addPoint(QPointF(minX, minY))
+            self.current.addPoint(QPointF(maxX, minY))
+            self.current.addPoint(QPointF(maxX, maxY))
+            self.current.addPoint(QPointF(minX, maxY))
+            self.finalise(continous=True)
 
     def setHiding(self, enable=True):
         self._hideBackround = self.hideBackround if enable else False
@@ -645,7 +675,7 @@ class Canvas(QWidget):
             p.setBrush(brush)
             p.drawRect(leftTop.x(), leftTop.y(), rectWidth, rectHeight)
 
-        if self.drawing() and not self.prevPoint.isNull() and not self.outOfPixmap(self.prevPoint):
+        if (self.drawing() or self.continueDrawing()) and not self.prevPoint.isNull() and not self.outOfPixmap(self.prevPoint):
             oldmode = p.compositionMode()
             p.setCompositionMode(QPainter.RasterOp_SourceXorDestination)
             p.setPen(QPen(QColor(255,255,255), 1/self.scale)) # TODO : limit pen width
@@ -701,7 +731,7 @@ class Canvas(QWidget):
         w, h = self.pixmap.width(), self.pixmap.height()
         return not (0 <= p.x() <= w and 0 <= p.y() <= h)
 
-    def finalise(self):
+    def finalise(self, continous=False):
         if self.current is None:
             return
         if self.current.points[0] == self.current.points[-1]:
@@ -715,7 +745,7 @@ class Canvas(QWidget):
         self.shapes.append(self.current)
         self.current = None
         self.setHiding(False)
-        self.newShape.emit()
+        self.newShape.emit(continous) # TODO:
         self.update()
 
     def closeEnough(self, p1, p2):
@@ -811,7 +841,7 @@ class Canvas(QWidget):
             self.drawingPolygon.emit(False)
             self.update()
         elif key == Qt.Key_Escape and self.current is None:
-            if self.drawing():
+            if self.drawing() or self.continueDrawing():
                 self.cancelDraw.emit()
             self.finalise()
         elif key == Qt.Key_Return or key == Qt.Key_Enter:

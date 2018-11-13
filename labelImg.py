@@ -255,6 +255,9 @@ class MainWindow(QMainWindow, WindowMixin):
         create = action('Create\nRectBox', self.createShape,
                         'w', 'rect.png', u'Draw a new Box', enabled=False)
 
+        createSo = action('Create\nSolidRectBox', self.createSoShape,
+                          None, 'rect.png', None, enabled=False)
+
         createRo = action('Create\nRotatedRBox', self.createRoShape,
                         'e', 'rectRo.png', u'Draw a new RotatedRBox', enabled=False)        
         
@@ -324,7 +327,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
         # Store actions for further handling.
         self.actions = struct(save=save, saveAs=saveAs, open=open, close=close, resetAll = resetAll,
-                              create=create, createRo=createRo, delete=delete, edit=edit, copy=copy,
+                              create=create, createSo=createSo, createRo=createRo, delete=delete, edit=edit, copy=copy,
                               zoom=zoom, zoomIn=zoomIn, zoomOut=zoomOut, zoomOrg=zoomOrg,
                               fitWindow=fitWindow, fitWidth=fitWidth, play=play,
                               zoomActions=zoomActions,
@@ -333,7 +336,7 @@ class MainWindow(QMainWindow, WindowMixin):
                               beginner=(),
                               editMenu=(edit, copy, delete,
                                         None),
-                              beginnerContext=(create, createRo, copy, delete),
+                              beginnerContext=(create, createSo, createRo, copy, delete),
                               onLoadActive=(
                                   close, create),
                               onShapesPresent=(saveAs,))
@@ -361,8 +364,8 @@ class MainWindow(QMainWindow, WindowMixin):
         self.drawCorner = QAction('Always Draw Corner', self)
         self.drawCorner.setCheckable(True)
         self.drawCorner.setChecked(settings.get(SETTING_DRAW_CORNER, False))
-        self.drawCorner.triggered.connect(self.drawCornerChanged)
-
+        self.drawCorner.triggered.connect(self.canvas.setDrawCornerState)
+        
         addActions(self.menus.file,
                    (open, opendir, changeSavedir, openAnnotation, self.menus.recentFiles, save, saveAs, close, resetAll, quit))
         addActions(self.menus.help, (showInfo,))
@@ -384,7 +387,7 @@ class MainWindow(QMainWindow, WindowMixin):
             action('&Move here', self.moveShape)))
 
         self.tools = self.toolbar('Tools')
-        self.actions.beginner = (open, opendir, changeSavedir, verify, save, None, create, createRo, copy, delete, None,
+        self.actions.beginner = (open, opendir, changeSavedir, verify, save, None, create, createSo, createRo, copy, delete, None,
             zoomIn, zoom, zoomOut, zoomOrg, fitWindow, fitWidth)
 
         self.statusBar().showMessage('%s started.' % __appname__)
@@ -468,7 +471,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.menus[0].clear()
         addActions(self.canvas.menus[0], menu)
         self.menus.edit.clear()
-        actions = (self.actions.create, self.actions.createRo) 
+        actions = (self.actions.create, self.actions.createSo, self.actions.createRo) 
         addActions(self.menus.edit, actions + self.actions.editMenu)
 
     def setDirty(self):
@@ -479,6 +482,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.dirty = False
         self.actions.save.setEnabled(False)
         self.actions.create.setEnabled(True)
+        self.actions.createSo.setEnabled(True)
         self.actions.createRo.setEnabled(True)
 
     def autoNext(self):
@@ -560,31 +564,42 @@ class MainWindow(QMainWindow, WindowMixin):
         QMessageBox.information(self, u'About', msg)
 
     def createShape(self):
-        self.canvas.setEditing(False)
+        self.canvas.setEditing(0)
         self.canvas.canDrawRotatedRect = False
         self.actions.create.setEnabled(False)
+        self.actions.createSo.setEnabled(False)
+        self.actions.createRo.setEnabled(False)
+
+    def createSoShape(self):
+        self.canvas.setEditing(2)
+        self.canvas.canDrawRotatedRect = False
+        self.actions.create.setEnabled(False)
+        self.actions.createSo.setEnabled(False)
         self.actions.createRo.setEnabled(False)
 
     def createRoShape(self):
-        self.canvas.setEditing(False)
+        self.canvas.setEditing(0)
         self.canvas.canDrawRotatedRect = True
         self.actions.create.setEnabled(False)
+        self.actions.createSo.setEnabled(False)
         self.actions.createRo.setEnabled(False)
         
     def createCancel(self):
-        self.canvas.setEditing(True)
+        self.canvas.setEditing(1)
         self.canvas.restoreCursor()
         self.actions.create.setEnabled(True)
+        self.actions.createSo.setEnabled(True)
         self.actions.createRo.setEnabled(True)
 
     def toggleDrawingSensitive(self, drawing=True):
         if not drawing:
-            self.canvas.setEditing(True)
+            self.canvas.setEditing(1)
             self.canvas.restoreCursor()
             self.actions.create.setEnabled(True)
+            self.actions.createSo.setEnabled(True)
             self.actions.createRo.setEnabled(True)
 
-    def toggleDrawMode(self, edit=True):
+    def toggleDrawMode(self, edit=1):
         self.canvas.setEditing(edit)
 
     def toggleExtraEditing(self, state):
@@ -753,7 +768,7 @@ class MainWindow(QMainWindow, WindowMixin):
             else:
                 shape.fill_color = generateColorByText(label)
             
-            shape.highlightCornerDefault = self.drawCorner.isChecked()
+            shape.alwaysShowCorner = self.drawCorner.isChecked()
 
             if not label in self.labelHist:
                 self.labelHist.append(label)
@@ -817,18 +832,22 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.setShapeVisible(shape, checked)
 
     # Callback functions:
-    def newShape(self):
+    def newShape(self, continous):
         text = self.default_label
         extra_text = ""
         if text is not None:
             generate_color = generateColorByText(text)
             shape = self.canvas.setLastLabel(text, generate_color, generate_color, extra_text)
-            shape.highlightCornerDefault=self.drawCorner.isChecked()
+            shape.alwaysShowCorner=self.drawCorner.isChecked()
 
             self.addLabel(shape)
-            self.canvas.setEditing(True)
-            self.actions.create.setEnabled(True)
-            self.actions.createRo.setEnabled(True)
+            if continous:
+                pass
+            else:
+                self.canvas.setEditing(1)
+                self.actions.create.setEnabled(True)
+                self.actions.createSo.setEnabled(True)
+                self.actions.createRo.setEnabled(True)
 
             self.setDirty()
 
@@ -914,9 +933,6 @@ class MainWindow(QMainWindow, WindowMixin):
             self.actions.fitWindow.setChecked(False)
         self.zoomMode = self.FIT_WIDTH if value else self.MANUAL_ZOOM
         self.adjustScale()
-
-    def drawCornerChanged(self, value=True):
-        self.canvas.setDrawCornerState(value)
 
     def loadFile(self, filePath=None):
         """Load the specified file, or the last opened file if None."""
@@ -1357,13 +1373,4 @@ def main():
     return app.exec_()
 
 if __name__ == '__main__':
-    #import ctypes  
-    #whnd = ctypes.windll.kernel32.GetConsoleWindow()  
-    #if whnd != 0:  
-    #    ctypes.windll.user32.ShowWindow(whnd, 0)
-    #    ctypes.windll.kernel32.CloseHandle(whnd)
-    #if os.name == 'nt':
-    #    startupinfo = subprocess.STARTUPINFO()
-    #    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    #    startupinfo.wShowWindow = subprocess.SW_HIDE
     sys.exit(main())

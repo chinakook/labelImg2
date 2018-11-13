@@ -288,6 +288,8 @@ class Canvas(QWidget):
         if ev.button() == Qt.LeftButton:
             if self.drawing():
                 self.handleDrawing(pos)
+            if self.continueDrawing():
+                pass
             else:
                 self.selectShapePoint(pos)
                 self.prevPoint = pos
@@ -371,8 +373,8 @@ class Canvas(QWidget):
             self.current.highlightCorner=True
             minX = pos.x() - 30
             maxX = pos.x() + 30
-            minY = pos.y() - 40
-            maxY = pos.y() + 40
+            minY = pos.y() - 38
+            maxY = pos.y() + 38
             self.current.addPoint(QPointF(minX, minY))
             self.current.addPoint(QPointF(maxX, minY))
             self.current.addPoint(QPointF(maxX, maxY))

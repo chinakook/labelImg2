@@ -988,7 +988,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.filePath = unicodeFilePath
             self.canvas.loadPixmap(QPixmap.fromImage(image))
             self.imageDim.setText('%d x %d' % (self.image.width(), self.image.height()))
-            if self.labelFile:
+            if self.labelFile is not None:
                 self.loadLabels(self.labelFile.shapes)
             self.setClean()
             self.canvas.setEnabled(True)

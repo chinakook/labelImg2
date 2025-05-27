@@ -24,14 +24,6 @@ Linux/Ubuntu/Mac requires at least `Python
 
 Ubuntu Linux
 ^^^^^^^^^^^^
-Python 2 + Qt4
-
-.. code::
-
-    sudo apt-get install pyqt4-dev-tools
-    sudo pip install lxml
-    python labelImg.py
-    python labelImg.py [IMAGE_PATH] [PRE-DEFINED CLASS FILE]
 
 Python 3 + Qt5
 
@@ -42,28 +34,13 @@ Python 3 + Qt5
     python3 labelImg.py
     python3 labelImg.py [IMAGE_PATH] [PRE-DEFINED CLASS FILE]
 
-Windows
-^^^^^^^
-
-Download and setup `Python 2.6 or
-later <https://www.python.org/downloads/windows/>`__,
-`PyQt4 <https://www.riverbankcomputing.com/software/pyqt/download>`__
-and `install lxml <http://lxml.de/installation.html>`__.
-
-Open cmd and go to the `labelImg <#labelimg>`__ directory
-
-.. code::
-
-    python labelImg.py
-    python labelImg.py [IMAGE_PATH] [PRE-DEFINED CLASS FILE]
-    
 Windows + Anaconda
 ^^^^^^^
 
 Download and install `Anaconda <https://www.anaconda.com/download/#download>`__ (Python 3+)
 
 Open the Anaconda Prompt and go to the `labelImg <#labelimg>`__ directory
-
+You might need admin privileges to install.
 .. code::
 
     conda install pyqt=5
@@ -114,6 +91,14 @@ Hotkeys
 | d          | Next image                                 |
 +------------+--------------------------------------------+
 | a          | Previous image                             |
++------------+--------------------------------------------+
+| z          | Rotates contra-clockwize, big steps;       |
++------------+--------------------------------------------+
+| x          | Rotates contra-clockwize, small steps;     |
++------------+--------------------------------------------+
+| c          | Rotates clockwize, small steps;            |
++------------+--------------------------------------------+
+| v          | Rotates clockwize, big steps.              |
 +------------+--------------------------------------------+
 | del        | Delete the selected rect box               |
 +------------+--------------------------------------------+

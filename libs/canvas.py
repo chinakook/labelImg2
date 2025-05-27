@@ -81,7 +81,7 @@ class Canvas(QWidget):
         self.canDrawRotatedRect = True
         self.hideRotated = False
         self.hideNormal = False
-        self.canOutOfBounding = False
+        self.canOutOfBounding = True
         self.showCenter = False
         
         #self.setAttribute(Qt.WA_PaintOnScreen)
@@ -897,6 +897,11 @@ class Canvas(QWidget):
         elif key == Qt.Key_V and self.selectedShape and\
              self.selectedShape.isRotated and not self.rotateOutOfBound(-0.1):
             self.selectedShape.rotate(-0.1)
+            self.shapeMoved.emit()
+            self.update()
+        elif key == Qt.Key_F and self.selectedShape and\
+             self.selectedShape.isRotated and not self.rotateOutOfBound(-math.pi/2):
+            self.selectedShape.rotate(-math.pi/2)
             self.shapeMoved.emit()
             self.update()
         elif key == Qt.Key_R:

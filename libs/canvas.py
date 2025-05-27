@@ -13,6 +13,7 @@ except ImportError:
 
 from .shape import Shape
 from .lib import distance
+from libs.labelFile import LabelFile
 import math
 
 CURSOR_DEFAULT = Qt.ArrowCursor
@@ -259,8 +260,21 @@ class Canvas(QWidget):
                 self.hVertex, self.hShape = None, shape
                 shape.highlightCorner = True
                 # TODO: optimize here
-                self.setToolTip(
-                    "%s\n X: (%f, %f)\nY: (%f, %f)" % (shape.label, shape.points[0].x(), shape.points[2].x(), shape.points[0].y(), shape.points[2].y()) )
+                if shape.isRotated:
+                    # rotbox = LabelFile.convertPoints2RotatedBndBox(shape)
+                    # print(rotbox)
+                    w = math.sqrt((shape.points[0].x()-shape.points[1].x()) ** 2 +
+                        (shape.points[0].y()-shape.points[1].y()) ** 2)
+
+                    h = math.sqrt((shape.points[2].x()-shape.points[1].x()) ** 2 +
+                        (shape.points[2].y()-shape.points[1].y()) ** 2)
+                    tooltip_str = "%s\n xywhr: (%f, %f, %f, %f, %f)" % (shape.label, shape.center.x(), shape.center.y(), w, h, 
+                                                                        (shape.direction * 180 / math.pi) % 360)
+                    # print(shape.direction  * 180 / math.pi)
+                else:
+                    tooltip_str = "%s\n X: (%f, %f)\nY: (%f, %f)" % (shape.label, shape.points[0].x(), shape.points[2].x(), shape.points[0].y(), shape.points[2].y())
+
+                self.setToolTip(tooltip_str)
                 #self.setStatusTip(self.toolTip())
                 self.overrideCursor(CURSOR_GRAB)
                 
@@ -357,6 +371,9 @@ class Canvas(QWidget):
             self.current.addPoint(QPointF(maxX, minY))
             self.current.addPoint(targetPos)
             self.current.addPoint(QPointF(minX, maxY))
+            pos_diff = self.current.points[2] - self.current.points[0]
+            if pos_diff.y() < 0:
+                self.current.direction = math.pi
             self.finalise()
         elif not self.outOfPixmap(pos):
             self.current = Shape()

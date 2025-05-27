@@ -39,7 +39,7 @@ Windows + Anaconda
 
 Download and install `Anaconda <https://www.anaconda.com/download/#download>`__ (Python 3+)
 
-Open the Anaconda Prompt and go to the `labelImg <#labelimg>`__ directory
+Open the Anaconda Prompt and go to the `labelImg <#labelimg>`__ directory.
 You might need admin privileges to install.
 
 .. code::

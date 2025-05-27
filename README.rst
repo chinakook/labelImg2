@@ -18,9 +18,6 @@ Build from source
 ~~~~~~~~~~~~~~~~~
 
 Linux/Ubuntu/Mac requires at least `Python
-2.6 <https://www.python.org/getit/>`__ and has been tested with `PyQt
-4.8 <https://www.riverbankcomputing.com/software/pyqt/intro>`__.
-
 
 Ubuntu Linux
 ^^^^^^^^^^^^
@@ -93,13 +90,15 @@ Hotkeys
 +------------+--------------------------------------------+
 | a          | Previous image                             |
 +------------+--------------------------------------------+
-| z          | Rotates contra-clockwize, big steps;       |
+| z          | Rotates counterclockwise, big steps;       |
 +------------+--------------------------------------------+
-| x          | Rotates contra-clockwize, small steps;     |
+| x          | Rotates counterclockwise, small steps;     |
 +------------+--------------------------------------------+
-| c          | Rotates clockwize, small steps;            |
+| c          | Rotates clockwise, small steps;            |
 +------------+--------------------------------------------+
-| v          | Rotates clockwize, big steps.              |
+| v          | Rotates clockwise, big steps.              |
++------------+--------------------------------------------+
+| f          | Rotates 90 degrees clockwise.              |
 +------------+--------------------------------------------+
 | del        | Delete the selected rect box               |
 +------------+--------------------------------------------+

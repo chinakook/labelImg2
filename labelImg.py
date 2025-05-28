@@ -18,6 +18,7 @@ from libs.naturalsort import natsort
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
+from PyQt5.QtCore import QCollator, QLocale
 
 # Add internal libs
 from libs.constants import *
@@ -1106,10 +1107,13 @@ class MainWindow(QMainWindow, WindowMixin):
                     relativePath = os.path.join(root, file)
                     path = os.path.abspath(relativePath)
                     images.append(path)
-        # TODO: ascii decode error in natsort
-        #images = natsort(images, key=lambda x: x.lower())
-        #images.sort(key= lambda a, b: lexicographical_compare(a,b) )
-        return images
+        collator = QCollator()
+        locale = QLocale(QLocale.Chinese)
+        collator.setLocale(locale)
+        def sort_key(s):
+            return collator.sortKey(s)
+        sorted_images = sorted(images, key=sort_key)
+        return sorted_images
 
     def changeSavedirDialog(self, _value=False):
         if self.defaultSaveDir is not None:

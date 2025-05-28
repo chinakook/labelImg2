@@ -8,6 +8,8 @@ It is written in Python and uses Qt for its graphical interface.
 Annotations are saved as XML files in PASCAL VOC format, the format used
 by `ImageNet <http://www.image-net.org/>`__.
 
+Annotations can now be exported in Ultralytics YOLO's BOX format and OBB format.
+
 .. image:: img/screen0.jpg
      :alt: labelImg2 with rotated box and extra label
 
@@ -120,4 +122,4 @@ License
 ~~~~~~~
 `Free software: MIT license <https://github.com/chinakook/labelImg2/blob/master/LICENSE>`_
 
-Citation: Chinakook. LabelImg2. Git code (2018). https://github.com/chinakook/labelImg2
+Citation: Chinakook. LabelImg2. Git code (2018-2025). https://github.com/chinakook/labelImg2

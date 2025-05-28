@@ -9,9 +9,9 @@ import platform
 import re
 import sys
 import subprocess
-
+import yaml, yamlloader
 from functools import partial
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 from libs.naturalsort import natsort
 
@@ -1400,6 +1400,18 @@ class MainWindow(QMainWindow, WindowMixin):
                            save_dir_path, tag='train', format='rotbox')
         cvt_lbidata_rotdet(self.dirname, all_shapes_map, label_map,
                            save_dir_path, tag='val', format='rotbox')
+
+        yml_fn = os.path.join(save_dir_path, 'train.yaml')
+
+        ydat = OrderedDict(path=save_dir_path,
+                        train='train_list.txt',
+                        val='val_list.txt',
+                        nc=len(label_map),
+                        names=[k for k in label_map.keys()])
+
+        with open(yml_fn, 'w') as fy:
+            yaml.dump(ydat, fy,
+                    Dumper=yamlloader.ordereddict.CDumper)
 
 
 def find_matching_files(dir_a, dir_b):

@@ -15,20 +15,9 @@ from collections import defaultdict
 
 from libs.naturalsort import natsort
 
-try:
-    from PyQt5.QtGui import *
-    from PyQt5.QtCore import *
-    from PyQt5.QtWidgets import *
-except ImportError:
-    # needed for py3+qt4
-    # Ref:
-    # http://pyqt.sourceforge.net/Docs/PyQt4/incompatible_apis.html
-    # http://stackoverflow.com/questions/21217399/pyqt4-qtcore-qvariant-object-instead-of-a-string
-    if sys.version_info.major >= 3:
-        import sip
-        sip.setapi('QVariant', 2)
-    from PyQt4.QtGui import *
-    from PyQt4.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
 
 # Add internal libs
 from libs.constants import *
@@ -40,10 +29,10 @@ from libs.zoomWidget import ZoomWidget
 from libs.labelDialog import LabelDialog
 from libs.labelFile import LabelFile, LabelFileError
 from libs.pascal_voc_io import PascalVocReader, XML_EXT
-from libs.ustr import ustr
 
 from libs.labelView import CLabelView, HashableQStandardItem
 from libs.fileView import CFileView
+from libs.cvtlabels2yolo import cvt_lbidata_rotdet
 
 __appname__ = 'labelImg2'
 
@@ -242,7 +231,7 @@ class MainWindow(QMainWindow, WindowMixin):
         verify = action('&Verify Image', self.verifyImg,
                         'space', 'downloaded.svg', u'Verify Image')
 
-        save = action('&Save', self.saveFile,
+        save = action('&Save', self.saveFileAndRenderList,
                       'Ctrl+S', 'save.svg', u'Save labels to file', enabled=False)
 
         saveAs = action('&Save As', self.saveFileAs,
@@ -257,12 +246,16 @@ class MainWindow(QMainWindow, WindowMixin):
 
         createSo = action('Create\nSolidRectBox', self.createSoShape,
                           None, 'rect.png', None, enabled=False)
+        createSo.setVisible(False)
 
         createRo = action('Create\nRotatedRBox', self.createRoShape,
                         'e', 'rectRo.png', u'Draw a new RotatedRBox', enabled=False)        
         
         delete = action('Delete\nRectBox', self.deleteSelectedShape,
                         'Delete', 'cancel2.svg', u'Delete', enabled=False)
+        
+        labelAsBack = action('Label as background', self.labelAsBackground,
+                         None, None, u'Label as background sample for detection training')
 
         copy = action('&Duplicate\nRectBox', self.copySelectedShape,
                       'Ctrl+D', 'copy.svg', u'Create a duplicate of the selected Box',
@@ -327,7 +320,8 @@ class MainWindow(QMainWindow, WindowMixin):
 
         # Store actions for further handling.
         self.actions = struct(save=save, saveAs=saveAs, open=open, close=close, resetAll = resetAll,
-                              create=create, createSo=createSo, createRo=createRo, delete=delete, edit=edit, copy=copy,
+                              create=create, createSo=createSo, createRo=createRo, delete=delete, 
+                              labelAsBack=labelAsBack, edit=edit, copy=copy,
                               zoom=zoom, zoomIn=zoomIn, zoomOut=zoomOut, zoomOrg=zoomOrg,
                               fitWindow=fitWindow, fitWidth=fitWidth, play=play,
                               zoomActions=zoomActions,
@@ -336,7 +330,7 @@ class MainWindow(QMainWindow, WindowMixin):
                               beginner=(),
                               editMenu=(edit, copy, delete,
                                         None),
-                              beginnerContext=(create, createSo, createRo, copy, delete),
+                              beginnerContext=(create, createSo, createRo, copy, delete, labelAsBack),
                               onLoadActive=(
                                   close, create),
                               onShapesPresent=(saveAs,))
@@ -347,6 +341,7 @@ class MainWindow(QMainWindow, WindowMixin):
             view=self.menu('&View'),
             help=self.menu('&Help'),
             recentFiles=QMenu('Open &Recent'),
+            exportAnnotations=QMenu('Export to'),
             labelList=labelMenu)
 
         # Auto saving : Enable auto saving if pressing next
@@ -367,7 +362,13 @@ class MainWindow(QMainWindow, WindowMixin):
         self.drawCorner.triggered.connect(self.canvas.setDrawCornerState)
         
         addActions(self.menus.file,
-                   (open, opendir, changeSavedir, openAnnotation, self.menus.recentFiles, save, saveAs, close, resetAll, quit))
+                   (open, opendir, changeSavedir, openAnnotation, self.menus.recentFiles, self.menus.exportAnnotations, 
+                    save, saveAs, close, resetAll, quit))
+        
+        export_as_yolo = action('Ultralytics YOLO OBB', self.exportAsYOLO)
+
+        addActions(self.menus.exportAnnotations, (export_as_yolo,))
+
         addActions(self.menus.help, (showInfo,))
         addActions(self.menus.view, (
             self.autoSaving,
@@ -395,7 +396,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
         # Application state.
         self.image = QImage()
-        self.filePath = ustr(defaultFilename)
+        self.filePath = defaultFilename
         self.recentFiles = []
         self.maxRecent = 7
         self.lineColor = None
@@ -409,7 +410,7 @@ class MainWindow(QMainWindow, WindowMixin):
         if settings.get(SETTING_RECENT_FILES):
             if have_qstring():
                 recentFileQStringList = settings.get(SETTING_RECENT_FILES)
-                self.recentFiles = [ustr(i) for i in recentFileQStringList]
+                self.recentFiles = [i for i in recentFileQStringList]
             else:
                 self.recentFiles = recentFileQStringList = settings.get(SETTING_RECENT_FILES)
 
@@ -417,8 +418,8 @@ class MainWindow(QMainWindow, WindowMixin):
         position = settings.get(SETTING_WIN_POSE, QPoint(0, 0))
         self.resize(size)
         self.move(position)
-        saveDir = ustr(settings.get(SETTING_SAVE_DIR, None))
-        self.lastOpenDir = ustr(settings.get(SETTING_LAST_OPEN_DIR, None))
+        saveDir = settings.get(SETTING_SAVE_DIR, None)
+        self.lastOpenDir = settings.get(SETTING_LAST_OPEN_DIR, None)
         if self.defaultSaveDir is None and saveDir is not None and os.path.exists(saveDir):
             self.defaultSaveDir = saveDir
             self.statusBar().showMessage('%s started. Annotation will be saved to %s' %
@@ -729,6 +730,13 @@ class MainWindow(QMainWindow, WindowMixin):
         del self.ShapeItemDict[shape]
         del self.ItemShapeDict[item0]
 
+    def remAllLabels(self):
+        self.canvas.deleteAll()
+        self.labelModel.clear()
+        self.ShapeItemDict.clear()
+        self.ItemShapeDict.clear()
+
+
     def loadLabels(self, shapes):
         s = []
         for shape_info in shapes:
@@ -780,7 +788,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.loadShapes(s)
 
     def saveLabels(self, annotationFilePath):
-        annotationFilePath = ustr(annotationFilePath)
         if self.labelFile is None:
             self.labelFile = LabelFile()
             self.labelFile.verified = self.canvas.verified
@@ -800,7 +807,7 @@ class MainWindow(QMainWindow, WindowMixin):
         shapes = [format_shape(shape) for shape in self.canvas.shapes]
         # Can add differrent annotation formats here
         try:
-            if ustr(annotationFilePath[-4:]) != ".xml":
+            if annotationFilePath[-4:] != ".xml":
                 annotationFilePath += XML_EXT
             print ('Img: ' + self.filePath + ' -> Its xml: ' + annotationFilePath)
             self.labelFile.savePascalVocFormat(annotationFilePath, shapes, self.filePath, self.imageData,
@@ -942,11 +949,8 @@ class MainWindow(QMainWindow, WindowMixin):
             filePath = self.settings.get(SETTING_FILENAME)
 
         # Make sure that filePath is a regular python string, rather than QString
-        if sys.version_info < (3, 0, 0):
-            filePath = filePath.toPyObject()
-        filePath = ustr(filePath)
 
-        unicodeFilePath = ustr(filePath)
+        unicodeFilePath = filePath
         
         if unicodeFilePath and os.path.exists(unicodeFilePath):
             if LabelFile.isLabelFile(unicodeFilePath):
@@ -1072,7 +1076,7 @@ class MainWindow(QMainWindow, WindowMixin):
         settings[SETTING_FILL_COLOR] = self.fillColor
         settings[SETTING_RECENT_FILES] = self.recentFiles
         if self.defaultSaveDir and os.path.exists(self.defaultSaveDir):
-            settings[SETTING_SAVE_DIR] = ustr(self.defaultSaveDir)
+            settings[SETTING_SAVE_DIR] = self.defaultSaveDir
         else:
             settings[SETTING_SAVE_DIR] = ""
 
@@ -1099,7 +1103,7 @@ class MainWindow(QMainWindow, WindowMixin):
             for file in files:
                 if file.lower().endswith(tuple(extensions)):
                     relativePath = os.path.join(root, file)
-                    path = ustr(os.path.abspath(relativePath))
+                    path = os.path.abspath(relativePath)
                     images.append(path)
         # TODO: ascii decode error in natsort
         #images = natsort(images, key=lambda x: x.lower())
@@ -1108,13 +1112,13 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def changeSavedirDialog(self, _value=False):
         if self.defaultSaveDir is not None:
-            path = ustr(self.defaultSaveDir)
+            path = self.defaultSaveDir
         else:
             path = '.'
 
-        dirpath = ustr(QFileDialog.getExistingDirectory(self,
+        dirpath = QFileDialog.getExistingDirectory(self,
                                                        '%s - Save annotations to the directory' % __appname__, path,  QFileDialog.ShowDirsOnly
-                                                       | QFileDialog.DontResolveSymlinks))
+                                                       | QFileDialog.DontResolveSymlinks)
 
         if dirpath is not None and len(dirpath) > 1:
             self.defaultSaveDir = dirpath
@@ -1132,10 +1136,10 @@ class MainWindow(QMainWindow, WindowMixin):
             self.statusBar().show()
             return
 
-        path = os.path.dirname(ustr(self.filePath))\
+        path = os.path.dirname(self.filePath) \
             if self.filePath else '.'
         filters = "Open Annotation XML file (%s)" % ' '.join(['*.xml'])
-        filename = ustr(QFileDialog.getOpenFileName(self,'%s - Choose a xml file' % __appname__, path, filters))
+        filename = QFileDialog.getOpenFileName(self,'%s - Choose a xml file' % __appname__, path, filters)
         if filename:
             if isinstance(filename, (tuple, list)):
                 filename = filename[0]
@@ -1151,9 +1155,9 @@ class MainWindow(QMainWindow, WindowMixin):
         else:
             defaultOpenDirPath = os.path.dirname(self.filePath) if self.filePath else '.'
 
-        targetDirPath = ustr(QFileDialog.getExistingDirectory(self,
+        targetDirPath = QFileDialog.getExistingDirectory(self,
                                                      '%s - Open Directory' % __appname__, defaultOpenDirPath,
-                                                     QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks))
+                                                     QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks)
         self.importDirImages(targetDirPath)
 
     def importDirImages(self, dirpath):
@@ -1211,7 +1215,7 @@ class MainWindow(QMainWindow, WindowMixin):
     def openFile(self, _value=False):
         if not self.mayContinue():
             return
-        path = os.path.dirname(ustr(self.filePath)) if self.filePath else '.'
+        path = os.path.dirname(self.filePath) if self.filePath else '.'
         formats = ['*.%s' % fmt.data().decode("ascii").lower() for fmt in QImageReader.supportedImageFormats()]
         filters = "Image & Label files (%s)" % ' '.join(formats + ['*%s' % LabelFile.suffix])
         filename = QFileDialog.getOpenFileName(self, '%s - Choose Image or Label file' % __appname__, path, filters)
@@ -1222,11 +1226,11 @@ class MainWindow(QMainWindow, WindowMixin):
     
     def saveFile(self, _value=False):
         
-        if self.defaultSaveDir is not None and len(ustr(self.defaultSaveDir)):
+        if self.defaultSaveDir is not None and len(self.defaultSaveDir):
             if self.filePath:
                 relname = os.path.relpath(self.filePath, self.dirname)
                 relname = os.path.splitext(relname)[0]
-                savedPath = os.path.join(ustr(self.defaultSaveDir), relname)
+                savedPath = os.path.join(self.defaultSaveDir, relname)
                 self._saveFile(savedPath)
         else:
             imgFileDir = os.path.dirname(self.filePath)
@@ -1235,6 +1239,11 @@ class MainWindow(QMainWindow, WindowMixin):
             savedPath = os.path.join(imgFileDir, savedFileName)
             self._saveFile(savedPath if self.labelFile
                            else self.saveFileDialog())
+
+    def saveFileAndRenderList(self, _value=False):
+        self.saveFile(_value=_value)
+        cur = self.filesm.currentIndex()
+        self.fileModel.setData(cur, len(self.canvas.shapes), Qt.BackgroundRole)
 
     def saveFileAs(self, _value=False):
         assert not self.image.isNull(), "cannot save empty image"
@@ -1251,7 +1260,7 @@ class MainWindow(QMainWindow, WindowMixin):
         dlg.selectFile(filenameWithoutExtension)
         dlg.setOption(QFileDialog.DontUseNativeDialog, False)
         if dlg.exec_():
-            fullFilePath = ustr(dlg.selectedFiles()[0])
+            fullFilePath = dlg.selectedFiles()[0]
             return os.path.splitext(fullFilePath)[0] # Return file path without the extension.
         return ''
 
@@ -1299,6 +1308,13 @@ class MainWindow(QMainWindow, WindowMixin):
             for action in self.actions.onShapesPresent:
                 action.setEnabled(False)
 
+    def labelAsBackground(self):
+        self.remAllLabels()
+        self.setDirty()
+        # if self.noShapes():
+        #     for action in self.actions.onShapesPresent:
+        #         action.setEnabled(False)
+
     def copyShape(self):
         self.canvas.endMove(copy=True)
         self.addLabel(self.canvas.selectedShape)
@@ -1334,6 +1350,72 @@ class MainWindow(QMainWindow, WindowMixin):
         paintLabelsOptionChecked = self.paintLabelsOption.isChecked()
         for shape in self.canvas.shapes:
             shape.paintLabel = paintLabelsOptionChecked
+
+    def exportAsYOLO(self, _value=False):
+        # print("export as yolo")
+        # print(self.dirname)
+        # print(self.defaultSaveDir)
+
+        xml_files = find_matching_files(self.defaultSaveDir, self.dirname)
+
+        label_map = {}
+        all_shapes_map = {}
+        label_count = 0
+        for xfn in xml_files:
+            xfn_full = os.path.join(self.defaultSaveDir, xfn)
+            tVocParseReader = PascalVocReader(xfn_full)
+            shapes = tVocParseReader.getShapes()
+            imgw, imgh, imgdepth = tVocParseReader.getSize()
+            img_fn = tVocParseReader.getImageFileName()
+
+            all_shapes_map[img_fn] = {
+                "height": imgh,
+                "width": imgw,
+                "bboxes": []
+            }
+            for si in shapes:
+                if si[0] not in label_map:
+                    label_map[si[0]] = label_count
+                    label_count += 1
+                all_shapes_map[img_fn]["bboxes"].append({
+                    "class": si[0],
+                    "is_rot": 0 if len(si) < 7 else int(si[5]),
+                    "x0": si[1][0][0],
+                    "y0": si[1][0][1],
+                    "x1": si[1][1][0],
+                    "y1": si[1][1][1],
+                    "x2": si[1][2][0],
+                    "y2": si[1][2][1],
+                    "x3": si[1][3][0],
+                    "y3": si[1][3][1],
+                })
+        defaultOpenDirPath = '.'
+        save_dir_path = QFileDialog.getExistingDirectory(self,
+                                                     '%s - Open Directory' % __appname__, defaultOpenDirPath,
+                                                     QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks)
+        if save_dir_path is None:
+            return
+
+        cvt_lbidata_rotdet(self.dirname, all_shapes_map, label_map,
+                           save_dir_path, tag='train', format='rotbox')
+        cvt_lbidata_rotdet(self.dirname, all_shapes_map, label_map,
+                           save_dir_path, tag='val', format='rotbox')
+
+
+def find_matching_files(dir_a, dir_b):
+    supported_extensions = tuple(['.%s' % fmt.data().decode("ascii").lower() for fmt 
+                                  in QImageReader.supportedImageFormats()])
+    xml_files = set()
+    for file in os.listdir(dir_b):
+        if file.endswith(".xml"):
+            xml_files.add(os.path.splitext(file)[0])
+
+    result = []
+    for file in os.listdir(dir_a):
+        if os.path.splitext(file)[0] in xml_files and file.lower().endswith(supported_extensions):
+            result.append(os.path.splitext(file)[0] + ".xml")  # 添加对应的xml文件名到结果列表
+
+    return result
 
 def inverted(color):
     return QColor(*[255 - v for v in color.getRgb()])

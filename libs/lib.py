@@ -2,15 +2,10 @@
 from __future__ import absolute_import
 
 from math import sqrt
-from .ustr import ustr
 import hashlib
-try:
-    from PyQt5.QtGui import *
-    from PyQt5.QtCore import *
-    from PyQt5.QtWidgets import *
-except ImportError:
-    from PyQt4.QtGui import *
-    from PyQt4.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
 
 
 def newIcon(icon):
@@ -78,8 +73,7 @@ def fmtShortcut(text):
 
 
 def generateColorByText(text):
-    utext = ustr(text)
-    s = utext #str(utext)
+    s = text #str(utext)
     hashCode = int(hashlib.sha256(s.encode('utf-8')).hexdigest(), 16)
     r = int((hashCode / 255) % 255)
     g = int((hashCode / 65025)  % 255)

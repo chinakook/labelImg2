@@ -1,12 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import
 
-try:
-    from PyQt5.QtGui import QImage
-    from PyQt5.QtGui import QImageReader
-except ImportError:
-    from PyQt4.QtGui import QImage
-    from PyQt4.QtGui import QImageReader
+from PyQt5.QtGui import QImage
+from PyQt5.QtGui import QImageReader
 
 
 from base64 import b64encode, b64decode

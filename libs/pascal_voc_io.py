@@ -188,6 +188,7 @@ class PascalVocReader:
         self.height = 0
         self.depth = 0
         self.filepath = filepath
+        self.filename = None
         self.verified = False
         try:
             self.parseXML()
@@ -199,6 +200,9 @@ class PascalVocReader:
 
     def getSize(self):
         return self.width, self.height, self.depth
+    
+    def getImageFileName(self):
+        return self.filename
 
     def addShape(self, label, bndbox, difficult, extra=None):
         xmin = int(eval(bndbox.find('xmin').text))
@@ -244,7 +248,7 @@ class PascalVocReader:
         assert self.filepath.endswith(XML_EXT), "Unsupport file format"
         parser = etree.XMLParser(encoding=ENCODE_METHOD)
         xmltree = ElementTree.parse(self.filepath, parser=parser).getroot()
-        filename = xmltree.find('filename').text
+        self.filename = xmltree.find('filename').text
         try:
             verified = xmltree.attrib['verified']
             if verified == 'yes':

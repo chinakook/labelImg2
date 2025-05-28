@@ -2,15 +2,10 @@
 # -*- coding: utf-8 -*-
 
 
-try:
-    from PyQt5.QtGui import *
-    from PyQt5.QtCore import *
-except ImportError:
-    from PyQt4.QtGui import *
-    from PyQt4.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
 
 from libs.lib import distance
-from libs.ustr import ustr
 import sys
 import math
 
@@ -155,8 +150,6 @@ class Shape(object):
                     font.setBold(False)
                     painter.setFont(font)
                     # TODO: optimize
-                    if sys.version_info < (3, 0, 0) and isinstance(self.label, QVariant):
-                        self.label = ustr(self.label.toPyObject())
                     if(self.label == None):
                         self.label = ""
                     painter.setPen(QColor(255,0,0))

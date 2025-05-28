@@ -3,13 +3,9 @@ from __future__ import absolute_import
 
 import os
 import sys
-try:
-    from PyQt5.QtGui import *
-    from PyQt5.QtCore import *
-    from PyQt5.QtWidgets import *
-except ImportError:
-    from PyQt4.QtGui import *
-    from PyQt4.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
 from .pascal_voc_io import PascalVocReader, XML_EXT
 
 class CFileListModel(QStringListModel):

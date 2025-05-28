@@ -2,14 +2,9 @@
 from __future__ import absolute_import
 
 import sys
-try:
-    from PyQt5.QtGui import *
-    from PyQt5.QtCore import *
-    from PyQt5.QtWidgets import *
-except ImportError:
-    from PyQt4.QtGui import *
-    from PyQt4.QtCore import *
-from .ustr import ustr
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
 
 class HashableQStandardItem(QStandardItem):
     def __init__(self, text):
@@ -45,7 +40,7 @@ class CComboBoxDelegate(QStyledItemDelegate):
         if sys.version_info < (3, 0, 0):
             text = text.toPyObject()
         combox = editor
-        tindex = combox.findText(ustr(text))
+        tindex = combox.findText(text)
         combox.setCurrentIndex(tindex)
 
     def setModelData(self, editor, model, index):

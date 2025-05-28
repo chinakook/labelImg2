@@ -365,9 +365,10 @@ class MainWindow(QMainWindow, WindowMixin):
                    (open, opendir, changeSavedir, openAnnotation, self.menus.recentFiles, self.menus.exportAnnotations, 
                     save, saveAs, close, resetAll, quit))
         
-        export_as_yolo = action('Ultralytics YOLO OBB', self.exportAsYOLO)
+        export_as_yolo = action('Ultralytics YOLO', self.exportAsYOLO)
+        export_as_yolo_obb = action('Ultralytics YOLO OBB', self.exportAsYOLOOBB)
 
-        addActions(self.menus.exportAnnotations, (export_as_yolo,))
+        addActions(self.menus.exportAnnotations, (export_as_yolo, export_as_yolo_obb,))
 
         addActions(self.menus.help, (showInfo,))
         addActions(self.menus.view, (
@@ -1351,11 +1352,7 @@ class MainWindow(QMainWindow, WindowMixin):
         for shape in self.canvas.shapes:
             shape.paintLabel = paintLabelsOptionChecked
 
-    def exportAsYOLO(self, _value=False):
-        # print("export as yolo")
-        # print(self.dirname)
-        # print(self.defaultSaveDir)
-
+    def exportAsYOLOImpl(self, obb=False):
         xml_files = find_matching_files(self.defaultSaveDir, self.dirname)
 
         label_map = {}
@@ -1377,18 +1374,54 @@ class MainWindow(QMainWindow, WindowMixin):
                 if si[0] not in label_map:
                     label_map[si[0]] = label_count
                     label_count += 1
-                all_shapes_map[img_fn]["bboxes"].append({
-                    "class": si[0],
-                    "is_rot": 0 if len(si) < 7 else int(si[5]),
-                    "x0": si[1][0][0],
-                    "y0": si[1][0][1],
-                    "x1": si[1][1][0],
-                    "y1": si[1][1][1],
-                    "x2": si[1][2][0],
-                    "y2": si[1][2][1],
-                    "x3": si[1][3][0],
-                    "y3": si[1][3][1],
-                })
+                is_rot = 0 if len(si) < 7 else int(si[5])
+                if obb:
+                    si_dict = {
+                        "class": si[0],
+                        "is_rot": is_rot,
+                        "x0": si[1][0][0],
+                        "y0": si[1][0][1],
+                        "x1": si[1][1][0],
+                        "y1": si[1][1][1],
+                        "x2": si[1][2][0],
+                        "y2": si[1][2][1],
+                        "x3": si[1][3][0],
+                        "y3": si[1][3][1],
+                    }
+                else:
+                    if is_rot:
+                        xmin = int(min(si[1][0][0], si[1][1][0], si[1][2][0], si[1][3][0]))
+                        ymin = int(min(si[1][0][1], si[1][1][1], si[1][2][1], si[1][3][1]))
+                        xmax = int(max(si[1][0][0], si[1][1][0], si[1][2][0], si[1][3][0]))
+                        ymax = int(max(si[1][0][1], si[1][1][1], si[1][2][1], si[1][3][1]))
+                        si_dict = {
+                            "class": si[0],
+                            "is_rot": is_rot,
+                            "x0": xmin,
+                            "y0": ymin,
+                            "x1": 0,
+                            "y1": 0,
+                            "x2": xmax,
+                            "y2": ymax,
+                            "x3": 0,
+                            "y3": 0,
+                        }
+                    else:
+                        si_dict = {
+                            "class": si[0],
+                            "is_rot": is_rot,
+                            "x0": si[1][0][0],
+                            "y0": si[1][0][1],
+                            "x1": si[1][1][0], # 0
+                            "y1": si[1][1][1], # 0
+                            "x2": si[1][2][0],
+                            "y2": si[1][2][1],
+                            "x3": si[1][3][0], # 0
+                            "y3": si[1][3][1], # 0
+                        }
+
+                all_shapes_map[img_fn]["bboxes"].append(si_dict)
+
         defaultOpenDirPath = '.'
         save_dir_path = QFileDialog.getExistingDirectory(self,
                                                      '%s - Open Directory' % __appname__, defaultOpenDirPath,
@@ -1397,9 +1430,9 @@ class MainWindow(QMainWindow, WindowMixin):
             return
 
         cvt_lbidata_rotdet(self.dirname, all_shapes_map, label_map,
-                           save_dir_path, tag='train', format='rotbox')
+                           save_dir_path, tag='train', format='rotbox' if obb else 'box')
         cvt_lbidata_rotdet(self.dirname, all_shapes_map, label_map,
-                           save_dir_path, tag='val', format='rotbox')
+                           save_dir_path, tag='val', format='rotbox' if obb else 'box')
 
         yml_fn = os.path.join(save_dir_path, 'train.yaml')
 
@@ -1412,6 +1445,12 @@ class MainWindow(QMainWindow, WindowMixin):
         with open(yml_fn, 'w') as fy:
             yaml.dump(ydat, fy,
                     Dumper=yamlloader.ordereddict.CDumper)
+    def exportAsYOLO(self, _value=False):
+        self.exportAsYOLOImpl(obb=False)
+
+
+    def exportAsYOLOOBB(self, _value=False):
+        self.exportAsYOLOImpl(obb=True)
 
 
 def find_matching_files(dir_a, dir_b):

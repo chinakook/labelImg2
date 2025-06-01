@@ -92,6 +92,8 @@ class MainWindow(QMainWindow, WindowMixin):
         # Whether we need to save or not.
         self.dirty = False
 
+        self.back_sample = False
+
         self._noSelectionSlot = False
 
         # Load predefined classes to the list
@@ -257,6 +259,9 @@ class MainWindow(QMainWindow, WindowMixin):
         
         labelAsBack = action('Label as background', self.labelAsBackground,
                          None, None, u'Label as background sample for detection training')
+        
+        deleteLabel = action('No Label', self.deleteLabel,
+                              None, None, u'Delete all annotations for current image.S')
 
         copy = action('&Duplicate\nRectBox', self.copySelectedShape,
                       'Ctrl+D', 'copy.svg', u'Create a duplicate of the selected Box',
@@ -322,7 +327,7 @@ class MainWindow(QMainWindow, WindowMixin):
         # Store actions for further handling.
         self.actions = struct(save=save, saveAs=saveAs, open=open, close=close, resetAll = resetAll,
                               create=create, createSo=createSo, createRo=createRo, delete=delete, 
-                              labelAsBack=labelAsBack, edit=edit, copy=copy,
+                              labelAsBack=labelAsBack, deleteLabel=deleteLabel, edit=edit, copy=copy,
                               zoom=zoom, zoomIn=zoomIn, zoomOut=zoomOut, zoomOrg=zoomOrg,
                               fitWindow=fitWindow, fitWidth=fitWidth, play=play,
                               zoomActions=zoomActions,
@@ -331,7 +336,7 @@ class MainWindow(QMainWindow, WindowMixin):
                               beginner=(),
                               editMenu=(edit, copy, delete,
                                         None),
-                              beginnerContext=(create, createSo, createRo, copy, delete, labelAsBack),
+                              beginnerContext=(create, createSo, createRo, copy, delete, labelAsBack, deleteLabel),
                               onLoadActive=(
                                   close, create),
                               onShapesPresent=(saveAs,))
@@ -480,6 +485,12 @@ class MainWindow(QMainWindow, WindowMixin):
     def setDirty(self):
         self.dirty = True
         self.actions.save.setEnabled(True)
+
+    def setBackSample(self):
+        self.back_sample = True
+
+    def resetBackSample(self):
+        self.back_sample = False
 
     def setClean(self):
         self.dirty = False
@@ -645,8 +656,13 @@ class MainWindow(QMainWindow, WindowMixin):
                 
                 self.labelList.earlyCommit()
                 if self.dirty is True:
-                    self.fileModel.setData(previous, len(self.canvas.shapes), Qt.BackgroundRole)
-                    self.saveFile()
+                    print(len(self.canvas.shapes), self.back_sample)
+                    if len(self.canvas.shapes) > 0 or self.back_sample:
+                        self.fileModel.setData(previous, len(self.canvas.shapes), Qt.BackgroundRole)
+                        self.saveFile()
+                    else:
+                        self.fileModel.setData(previous, None, Qt.BackgroundRole)
+                        self.removeFile()
             else:
                 self.changeSavedirDialog()
                 return
@@ -658,6 +674,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.canvas.selectedShape.selected = False
             self.canvas.selectedShape = None
             self.canvas.setHiding(False)
+        self.resetBackSample()
 
     # Add chris
     def btnstate(self, item= None):
@@ -1244,6 +1261,24 @@ class MainWindow(QMainWindow, WindowMixin):
             savedPath = os.path.join(imgFileDir, savedFileName)
             self._saveFile(savedPath if self.labelFile
                            else self.saveFileDialog())
+            
+    def removeFile(self):
+        if self.defaultSaveDir is not None and len(self.defaultSaveDir):
+            if self.filePath:
+                relname = os.path.relpath(self.filePath, self.dirname)
+                relname = os.path.splitext(relname)[0]
+                savedPath = os.path.join(self.defaultSaveDir, relname)
+        else:
+            imgFileDir = os.path.dirname(self.filePath)
+            imgFileName = os.path.basename(self.filePath)
+            savedFileName = os.path.splitext(imgFileName)[0]
+            savedPath = os.path.join(imgFileDir, savedFileName)
+            if self.labelFile is None:
+                savedPath = self.saveFileDialog()
+        if not savedPath.endswith(XML_EXT):
+            savedPath += XML_EXT
+        if os.path.exists(savedPath):
+            os.remove(savedPath)
 
     def saveFileAndRenderList(self, _value=False):
         self.saveFile(_value=_value)
@@ -1312,13 +1347,17 @@ class MainWindow(QMainWindow, WindowMixin):
         if self.noShapes():
             for action in self.actions.onShapesPresent:
                 action.setEnabled(False)
+            self.resetBackSample()
 
     def labelAsBackground(self):
         self.remAllLabels()
         self.setDirty()
-        # if self.noShapes():
-        #     for action in self.actions.onShapesPresent:
-        #         action.setEnabled(False)
+        self.setBackSample()
+
+    def deleteLabel(self):
+        self.remAllLabels()
+        self.setDirty()
+        self.resetBackSample()
 
     def copyShape(self):
         self.canvas.endMove(copy=True)

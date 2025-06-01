@@ -39,13 +39,21 @@ class CFileListModel(QStringListModel):
         return super(CFileListModel, self).setStringList(strings)
 
     def data(self, index, role):
+        item = self.dispList[index.row()]
+        pathname, count = item[0], item[1]
         if role == Qt.DisplayRole:
-            return '%s [%d]' % (self.dispList[index.row()][0], 0 if self.dispList[index.row()][1] is None else self.dispList[index.row()][1])
+            if count is None:
+                res_str = '%s [0]' % (pathname,)
+            else:
+                if count == 0:
+                    res_str = '%s [BG]' % (pathname,)
+                else:
+                    res_str = '%s [%d]' % (pathname, count)
+            return res_str
         elif role == Qt.ToolTipRole:
             return super(CFileListModel, self).data(index, Qt.EditRole)
         elif role == Qt.BackgroundRole:
-            item = self.dispList[index.row()]
-            if item[1] is None or item[1] == 0:
+            if item[1] is None: # or item[1] == 0:
                 brush = QBrush(Qt.transparent)
             else:
                 brush = QBrush(Qt.lightGray)

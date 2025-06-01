@@ -13,8 +13,6 @@ import yaml, yamlloader
 from functools import partial
 from collections import defaultdict, OrderedDict
 
-from libs.naturalsort import natsort
-
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *

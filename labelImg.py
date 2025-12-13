@@ -3,7 +3,6 @@
 from __future__ import absolute_import
 
 import codecs
-import distutils.spawn
 import os
 import platform
 import re

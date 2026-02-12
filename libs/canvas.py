@@ -691,15 +691,15 @@ class Canvas(QWidget):
             p.setPen(self.drawingRectColor)
             brush = QBrush(Qt.BDiagPattern)
             p.setBrush(brush)
-            p.drawRect(leftTop.x(), leftTop.y(), rectWidth, rectHeight)
+            p.drawRect(int(leftTop.x()), int(leftTop.y()), int(rectWidth), int(rectHeight))
 
         if (self.drawing() or self.continueDrawing()) and not self.prevPoint.isNull() and not self.outOfPixmap(self.prevPoint):
             oldmode = p.compositionMode()
             p.setCompositionMode(QPainter.RasterOp_SourceXorDestination)
             p.setPen(QPen(QColor(255,255,255), 1/self.scale)) # TODO : limit pen width
 
-            p.drawLine(self.prevPoint.x(), 0, self.prevPoint.x(), self.pixmap.height())
-            p.drawLine(0, self.prevPoint.y(), self.pixmap.width(), self.prevPoint.y())
+            p.drawLine(int(self.prevPoint.x()), 0, int(self.prevPoint.x()), int(self.pixmap.height()))
+            p.drawLine(0, int(self.prevPoint.y()), int(self.pixmap.width()), int(self.prevPoint.y()))
             p.setCompositionMode(oldmode)
 
         self.setAutoFillBackground(True)

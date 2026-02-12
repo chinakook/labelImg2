@@ -1020,13 +1020,15 @@ class MainWindow(QMainWindow, WindowMixin):
             # Label xml file and show bound box according to its filename
             vocReader = None
             if self.defaultSaveDir is not None:
-                relname = os.path.relpath(self.filePath, self.dirname)
-                relname = os.path.splitext(relname)[0]
-                # TODO: defaultSaveDir changed to another dir need mkdir for subdir
-                xmlPath = os.path.join(self.defaultSaveDir, relname + XML_EXT)
-
-                if os.path.exists(xmlPath) and os.path.isfile(xmlPath):
-                    vocReader = self.loadPascalXMLByFilename(xmlPath)
+                if self.dirname is not None and os.path.exists(self.dirname):
+                    relname = os.path.relpath(self.filePath, self.dirname)
+                    relname = os.path.splitext(relname)[0]
+                    # TODO: defaultSaveDir changed to another dir need mkdir for subdir
+                    xmlPath = os.path.join(self.defaultSaveDir, relname + XML_EXT)
+                else:
+                    xmlPath = os.path.splitext(filePath)[0] + XML_EXT
+                    if os.path.isfile(xmlPath):
+                        vocReader = self.loadPascalXMLByFilename(xmlPath)
             else:
                 xmlPath = os.path.splitext(filePath)[0] + XML_EXT
                 if os.path.isfile(xmlPath):
@@ -1036,6 +1038,14 @@ class MainWindow(QMainWindow, WindowMixin):
                 if self.image.width() != vocWidth or self.image.height() != vocHeight:
                     #self.errorMessage("Image info not matched", "The width or height of annotation file is not matched with that of the image")
                     self.saveFile()
+
+            imglist = [self.filePath]
+            self.fileModel.setStringList(imglist)
+            if self.fileModel.rowCount() > 0:
+                curIndex = self.fileModel.index(0)
+                self.filesm.blockSignals(True)
+                self.filesm.setCurrentIndex(curIndex, QItemSelectionModel.SelectCurrent)
+                self.filesm.blockSignals(False)
 
             self.canvas.setFocus(True)
             return True
@@ -1245,7 +1255,7 @@ class MainWindow(QMainWindow, WindowMixin):
     
     def saveFile(self, _value=False):
         
-        if self.defaultSaveDir is not None and len(self.defaultSaveDir):
+        if self.defaultSaveDir is not None and os.path.exists(self.defaultSaveDir) and self.dirname is not None:
             if self.filePath:
                 relname = os.path.relpath(self.filePath, self.dirname)
                 relname = os.path.splitext(relname)[0]

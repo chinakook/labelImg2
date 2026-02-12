@@ -65,11 +65,15 @@ class CFileListModel(QStringListModel):
 
     def setData(self, index, value, role = None):
 
+        if index.row() < 0:
+            return super(CFileListModel, self).setData(index, value, role)
+
         if role == Qt.BackgroundRole:
-            info = self.dispList[index.row()]
-            info[1] = value
-            info[2] = True
-            self.dispList[index.row()] = info
+            if index.row() < len(self.dispList):
+                info = self.dispList[index.row()]
+                info[1] = value
+                info[2] = True
+                self.dispList[index.row()] = info
 
         return super(CFileListModel, self).setData(index, value, role)
 

@@ -146,14 +146,14 @@ class Shape(object):
                     min_y = min(min_y, point.y())
                 if min_x != sys.maxsize and min_y != sys.maxsize:
                     font = QFont()
-                    font.setPointSize(20/self.scale) # TODO : max
+                    font.setPointSizeF(20/self.scale) # TODO : max
                     font.setBold(False)
                     painter.setFont(font)
                     # TODO: optimize
                     if(self.label == None):
                         self.label = ""
                     painter.setPen(QColor(255,0,0))
-                    painter.drawText(min_x, min_y, self.extra_label)
+                    painter.drawText(int(min_x), int(min_y), self.extra_label)
                     painter.setPen(pen)
                     
             if self.fill:

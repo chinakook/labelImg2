@@ -74,7 +74,7 @@ class LabelDialog(QDialog):
 
         self.sm = self.listView.selectionModel()
 
-        if listItem is not None:
+        if listItem is not None and len(listItem) > 0:
             self.default_label = listItem[0]
             self.model.setData(self.model.index(0), QBrush(Qt.red), Qt.BackgroundRole)
             
@@ -104,6 +104,10 @@ class LabelDialog(QDialog):
         curr = self.sm.currentIndex()
 
         sl = self.model.stringList()
+        
+        if self.default_label is None:
+            return
+        
         if sys.version_info < (3, 0, 0):
             j = sl.indexOf(self.default_label)
         else:

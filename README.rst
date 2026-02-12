@@ -18,10 +18,8 @@ Installation
 Build from source
 ~~~~~~~~~~~~~~~~~
 
-Linux/Ubuntu/Mac requires at least `Python
-
-Ubuntu Linux
-^^^^^^^^^^^^
+Linux/macOS
+^^^^^^^^^^^
 
 uv is recommended for building the app.
 Download and install uv python evironment:
@@ -139,4 +137,4 @@ License
 ~~~~~~~
 `Free software: MIT license <https://github.com/chinakook/labelImg2/blob/master/LICENSE>`_
 
-Citation: Chinakook. LabelImg2. Git code (2018-2025). https://github.com/chinakook/labelImg2
+Citation: Chinakook. LabelImg2. Git code (2018-2026). https://github.com/chinakook/labelImg2

@@ -1,0 +1,5 @@
+pyyaml
+yamlloader
+pyqt5
+lxml
+opencv-python

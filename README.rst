@@ -5,8 +5,7 @@ LabelImg2 is a graphical image annotation tool.
 
 It is written in Python and uses Qt for its graphical interface.
 
-Annotations are saved as XML files in PASCAL VOC format, the format used
-by `ImageNet <http://www.image-net.org/>`__.
+Annotations are saved as XML files in PASCAL VOC format.
 
 Annotations can now be exported in Ultralytics YOLO's BOX format and OBB format.
 
@@ -24,26 +23,39 @@ Linux/Ubuntu/Mac requires at least `Python
 Ubuntu Linux
 ^^^^^^^^^^^^
 
-Python 3 + Qt5
+uv is recommended for building the app.
+Download and install uv python evironment:
 
 .. code::
 
-    sudo apt-get install pyqt5-dev-tools
-    sudo pip3 install lxml
-    python3 labelImg.py
-    python3 labelImg.py [IMAGE_PATH] [PRE-DEFINED CLASS FILE]
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    uv venv --python 3.13 .venv
+    source .venv/bin/activate
+    uv pip install -r requirements.txt
 
-Windows + Anaconda
+Windows + uv
 ^^^^^^^
 
-Download and install `Anaconda <https://www.anaconda.com/download/#download>`__ (Python 3+)
-
-Open the Anaconda Prompt and go to the `labelImg <#labelimg>`__ directory.
+Open the Windows PowerShell and go to the `labelImg <#labelimg>`__ directory. 
 You might need admin privileges to install.
 
 .. code::
 
-    conda install pyqt=5
+    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+
+Then run the following commands in the Command Prompt:
+
+.. code::
+
+    set Path=C:\Users\<Your User Name>\.local\bin;%Path%
+    uv venv --python 3.13 .venv
+    .\.venv\Scripts\activate.bat
+    uv pip install -r requirements.txt
+
+Atfer that, you can run the app:
+
+.. code::
+
     python labelImg.py
     python labelImg.py [IMAGE_PATH] [PRE-DEFINED CLASS FILE]
 
@@ -71,6 +83,11 @@ Create pre-defined classes
 You can edit the
 `data/predefined\_classes.txt <https://github.com/chinakook/labelImg2/blob/master/data/predefined_classes.txt>`__
 to load pre-defined classes
+
+OBB Format
+~~~~~~~~~~
+
+TODO:
 
 Hotkeys
 ~~~~~~~
